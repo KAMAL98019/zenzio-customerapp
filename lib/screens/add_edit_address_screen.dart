@@ -79,6 +79,7 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
               label: const Text('Set Location on Map'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE53935),
+                foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -210,6 +211,7 @@ class _AddEditAddressScreenState extends State<AddEditAddressScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE53935),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),

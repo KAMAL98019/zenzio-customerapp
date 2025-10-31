@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
@@ -29,20 +29,47 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Menu',
+          'Zenzio',
           style: TextStyle(
             color: Color(0xFF2D2D2D),
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
         ),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFFE53935)),
-            onPressed: () {},
+            icon: const Icon(Icons.person, color: Color(0xFFE53935)),
+            onPressed: () {
+              Navigator.pushNamed(context, '/profile');
+            },
           ),
         ],
       ),
+    // return Scaffold(
+    //   backgroundColor: Colors.white,
+    //   appBar: AppBar(
+    //     backgroundColor: Colors.white,
+    //     elevation: 0,
+    //     leading: IconButton(
+    //       icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
+    //       onPressed: () => Navigator.pop(context),
+    //     ),
+    //     title: const Text(
+    //       'Zenzio',
+    //       style: TextStyle(
+    //         color: Color(0xFF2D2D2D),
+    //         fontSize: 18,
+    //         fontWeight: FontWeight.w600,
+    //       ),
+    //     ),
+    //     actions: [
+    //       IconButton(
+    //         icon: const Icon(Icons.search, color: Color(0xFFE53935)),
+    //         onPressed: () {},
+    //       ),
+    //     ],
+    //   ),
       body: Column(
         children: [
           Padding(

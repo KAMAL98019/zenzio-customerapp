@@ -357,6 +357,7 @@ class _BookingsHomeScreenState extends State<BookingsHomeScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE53935),
+                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),

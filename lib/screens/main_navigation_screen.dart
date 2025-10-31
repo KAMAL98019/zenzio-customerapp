@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'bookings_home_screen.dart';
+import 'menu_screen.dart';
 import 'my_orders_screen.dart';
 import 'profile_screen.dart';
 
@@ -16,7 +17,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const HomeScreen(), // Menu tab (same as home)
+    const MenuScreen(), // Menu tab (removed)
     const BookingsHomeScreen(),
     const MyOrdersScreen(),
   ];
@@ -77,12 +78,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ],
         ),
       ),
-      floatingActionButton: _selectedIndex != 3
+      floatingActionButton: _selectedIndex != 2 // updated index since one item removed
           ? FloatingActionButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/cart');
               },
-              backgroundColor: const Color(0xFFE53935),
+             backgroundColor: const Color(0xFFE53935),
+             foregroundColor: const Color.fromARGB(255, 243, 241, 241),
               child: const Icon(Icons.shopping_cart),
             )
           : null,

@@ -79,6 +79,7 @@ class BookingConfirmationScreen extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFE53935),
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),

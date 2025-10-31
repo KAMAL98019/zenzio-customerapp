@@ -8,6 +8,7 @@ import 'screens/forgot_password_otp_screen.dart';
 import 'screens/reset_password_screen.dart';
 import 'screens/main_navigation_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/menu_screen.dart';
 import 'screens/restaurant_detail_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/checkout_screen.dart';
@@ -24,6 +25,11 @@ import 'screens/edit_profile_screen.dart';
 import 'screens/saved_addresses_screen.dart';
 import 'screens/add_edit_address_screen.dart';
 import 'screens/payment_methods_screen.dart';
+import 'screens/notifications_screen.dart';
+import 'screens/help_support_screen.dart';
+import 'screens/settings_screen.dart';
+import 'screens/chat_assistant_screen.dart';
+import 'screens/my_coupons_screen.dart';
 
 void main() {
   runApp(const ZenzioApp());
@@ -61,6 +67,7 @@ class ZenzioApp extends StatelessWidget {
         
         // Food Ordering Flow
         '/home': (context) => const HomeScreen(),
+        '/menu': (context) => const MenuScreen(),
         '/restaurant-detail': (context) => const RestaurantDetailScreen(),
         '/cart': (context) => const CartScreen(),
         '/checkout': (context) => const CheckoutScreen(),
@@ -81,6 +88,11 @@ class ZenzioApp extends StatelessWidget {
         '/saved-addresses': (context) => const SavedAddressesScreen(),
         '/add-address': (context) => const AddEditAddressScreen(),
         '/payment-methods': (context) => const PaymentMethodsScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
+        '/help-support': (context) => const HelpSupportScreen(),
+        '/settings': (context) => const SettingsScreen(),
+        '/chat-assistant': (context) => const ChatAssistantScreen(),
+        '/my-coupons': (context) => const MyCouponsScreen(),
       },
     );
   }

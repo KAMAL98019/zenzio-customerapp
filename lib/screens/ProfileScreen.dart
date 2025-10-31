@@ -102,7 +102,7 @@ class ProfileScreen extends StatelessWidget {
               context,
               Icons.local_offer_outlined,
               'My Coupons',
-              '/my-coupons',
+              null,
             ),
             _buildMenuItem(
               context,

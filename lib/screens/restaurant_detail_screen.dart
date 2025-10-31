@@ -164,6 +164,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
           Navigator.pushNamed(context, '/cart');
         },
         backgroundColor: const Color(0xFFE53935),
+        foregroundColor: const Color.fromARGB(255, 243, 241, 241),
         child: const Icon(Icons.shopping_cart),
       ),
     );
@@ -503,6 +504,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE53935),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),

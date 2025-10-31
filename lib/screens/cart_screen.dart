@@ -179,6 +179,7 @@ class _CartScreenState extends State<CartScreen> {
                       onPressed: () {},
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE53935),
+                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 14,
@@ -275,6 +276,7 @@ class _CartScreenState extends State<CartScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE53935),
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
