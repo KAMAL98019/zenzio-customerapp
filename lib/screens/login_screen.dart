@@ -105,10 +105,11 @@ class _LoginScreenState extends State<LoginScreen>
     setState(() => _isLoading = true);
 
     try {
-      await _authService.loginWithEmail(
-        email: email,
-        password: password,
-      );
+     await _authService.loginWithEmail(
+  email: email,
+  password: password,
+);
+
 
       setState(() => _isLoading = false);
       

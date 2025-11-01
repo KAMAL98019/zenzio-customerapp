@@ -8,7 +8,7 @@ class ApiConfig {
   static const String apiBaseUrl = '$baseUrl$apiVersion';
   
   // ==================== AUTH ENDPOINTS ====================
-  static const String loginEndpoint = '$apiVersion/auth/login';
+  static const String loginEndpoint = '$apiVersion/users/auth/login';
   // static const String signupEndpoint = '$apiVersion/auth/signup';
 static const String signupEndpoint = '$apiVersion/users';
   static const String otpSendEndpoint = '$apiVersion/auth/send-otp';
@@ -17,6 +17,9 @@ static const String signupEndpoint = '$apiVersion/users';
   static const String resetPasswordEndpoint = '$apiVersion/auth/reset-password';
   static const String logoutEndpoint = '$apiVersion/auth/logout';
   
+
+    static const String foodItemsEndpoint = '$baseUrl/food-items';
+    
   // ==================== USER ENDPOINTS ====================
   static const String usersEndpoint = '$apiVersion/users';
   static const String userProfileEndpoint = '$apiVersion/users/me';

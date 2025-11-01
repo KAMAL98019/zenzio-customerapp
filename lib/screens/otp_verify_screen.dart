@@ -67,7 +67,7 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Cheezy',
+          'Zenzio',
           style: TextStyle(
             color: Color(0xFFE53935),
             fontSize: 16,

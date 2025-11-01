@@ -7,6 +7,7 @@ import '../data/models/register_request.dart';
 import '../data/models/register_response.dart';
 import '../data/models/user_model.dart';
 import 'api_service.dart';
+import 'dart:convert';
 
 class AuthService {
   static final AuthService _instance = AuthService._internal();
@@ -36,35 +37,47 @@ class AuthService {
   }
 
   // ==================== LOGIN WITH EMAIL ====================
-  Future<LoginResponse> loginWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final response = await _apiService.post(
-        ApiConfig.loginEndpoint,
-        body: {
-          'email': email,
-          'password': password,
-        },
+ Future<LoginResponse> loginWithEmail({
+  required String email,
+  required String password,
+}) async {
+  try {
+    final response = await _apiService.post(
+      ApiConfig.loginEndpoint, // Make sure this includes apiBaseUrl
+      body: {
+        'emailOrMobile': email, // ✅ Backend expects this key
+        'password': password,
+      },
+    );
+
+    print('📥 Full Response: $response'); // ✅ Debug log
+
+    // ✅ Response structure:
+    // { "success": true, "message": "Login successful", "data": { user info } }
+
+    if (response['success'] == true && response['data'] != null) {
+      final userJson = response['data'];
+      final user = User.fromJson(userJson);
+
+      final loginResponse = LoginResponse(
+        user: user,
+        message: response['message'] ?? 'Login successful',
       );
 
-      final loginResponse = LoginResponse.fromJson(response);
-      
-      // Save token
-      if (loginResponse.token != null) {
-        await _apiService.saveToken(loginResponse.token!);
-        _currentUser = loginResponse.user;
-        
-        // Save user data
-        await _saveUserData(loginResponse.user);
-      }
+      _currentUser = user;
+      await _saveUserData(user);
 
       return loginResponse;
-    } catch (e) {
-      rethrow;
+    } else {
+      throw ApiException(response['message'] ?? 'Login failed');
     }
+  } catch (e) {
+    print('❌ Login error: $e');
+    rethrow;
   }
+}
+
+
 
   // ==================== LOGIN WITH PHONE ====================
   Future<LoginResponse> loginWithPhone({
@@ -297,23 +310,25 @@ class AuthService {
   // ==================== SAVE USER DATA ====================
   Future<void> _saveUserData(User? user) async {
     if (user == null) return;
-    
+
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_data', user.toJson().toString());
+    final userJson = jsonEncode(user.toJson()); // ✅ proper JSON encoding
+    await prefs.setString('user_data', userJson);
   }
 
   // ==================== LOAD USER DATA ====================
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userData = prefs.getString('user_data');
-    
-    if (userData != null) {
-      try {
-        // Parse user data if needed
-        // _currentUser = User.fromJson(json.decode(userData));
-      } catch (e) {
-        print('Error loading user data: $e');
-      }
+ Future<void> loadUserData() async {
+  final prefs = await SharedPreferences.getInstance();
+  final userData = prefs.getString('user_data');
+
+  if (userData != null) {
+    try {
+      final userMap = jsonDecode(userData);
+      _currentUser = User.fromJson(userMap);
+      print('✅ Loaded user: ${_currentUser?.name}');
+    } catch (e) {
+      print('❌ Error loading user data: $e');
     }
   }
-} 
+}
+}

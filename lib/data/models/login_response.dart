@@ -1,6 +1,5 @@
 import 'user_model.dart';
 
-
 class LoginResponse {
   final String? token;
   final String? refreshToken;
@@ -15,10 +14,12 @@ class LoginResponse {
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] ?? json['user']; // ✅ Handles both formats
+
     return LoginResponse(
       token: json['token'] ?? json['access_token'],
       refreshToken: json['refreshToken'] ?? json['refresh_token'],
-      user: json['user'] != null ? User.fromJson(json['user']) : null,
+      user: data != null ? User.fromJson(data) : null,
       message: json['message'],
     );
   }

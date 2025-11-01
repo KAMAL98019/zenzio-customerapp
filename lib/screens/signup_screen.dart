@@ -118,7 +118,7 @@ class _SignupScreenState extends State<SignupScreen> {
         );
         
         // Navigate to main screen or login
-        Navigator.pushReplacementNamed(context, '/main-navigation');
+        Navigator.pushReplacementNamed(context, '/');
       }
     } on ApiException catch (e) {
       setState(() => _isLoading = false);
@@ -158,7 +158,7 @@ class _SignupScreenState extends State<SignupScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Cheezy',
+          'Zenzio',
           style: TextStyle(
             color: Color(0xFFE53935),
             fontSize: 16,
