@@ -31,7 +31,16 @@ import 'screens/settings_screen.dart';
 import 'screens/chat_assistant_screen.dart';
 import 'screens/my_coupons_screen.dart';
 
-void main() {
+// ✅ ADD THIS IMPORT
+import 'services/auth_service.dart';
+
+// ✅ UPDATE main() function - ADD async and initialize
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // ✅ ADD THIS LINE - Initialize auth service
+  await AuthService().initialize();
+  
   runApp(const ZenzioApp());
 }
 

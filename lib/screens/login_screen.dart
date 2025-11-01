@@ -3,6 +3,10 @@ import 'package:flutter/gestures.dart';
 import '../widgets/logo_widget.dart';
 import '../widgets/social_login_buttons.dart';
 
+// ✅ ADD THESE IMPORTS
+import '../services/auth_service.dart';
+import '../services/api_service.dart';
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -18,6 +22,10 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   String _selectedCountryCode = '+1';
+  
+  // ✅ ADD THESE NEW VARIABLES
+  final AuthService _authService = AuthService();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -34,73 +42,196 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  // ✅ ADD THIS METHOD - Handle Phone Login
+  Future<void> _handlePhoneLogin() async {
+    final phone = _phoneController.text.trim();
+    
+    if (phone.isEmpty) {
+      _showErrorDialog('Please enter your phone number');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _authService.sendOTP(
+        phone: phone,
+        countryCode: _selectedCountryCode,
+      );
+
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('OTP sent successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        Navigator.pushNamed(
+          context,
+          '/otp',
+          arguments: {
+            'phone': phone,
+            'countryCode': _selectedCountryCode,
+          },
+        );
+      }
+    } on ApiException catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog(e.message);
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog('An unexpected error occurred. Please try again.');
+    }
+  }
+
+  // ✅ ADD THIS METHOD - Handle Email Login
+  Future<void> _handleEmailLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showErrorDialog('Please enter both email and password');
+      return;
+    }
+
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      _showErrorDialog('Please enter a valid email address');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _authService.loginWithEmail(
+        email: email,
+        password: password,
+      );
+
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Login successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        Navigator.pushReplacementNamed(context, '/main-navigation');
+      }
+    } on ApiException catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog(e.message);
+    } catch (e) {
+      setState(() => _isLoading = false);
+      _showErrorDialog('An unexpected error occurred. Please try again.');
+    }
+  }
+
+  // ✅ ADD THIS METHOD - Show Error Dialog
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40),
-                const LogoWidget(),
-                const SizedBox(height: 16),
-                const Text(
-                  'Welcome Back!',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2D2D2D),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TabBar(
-                    controller: _tabController,
-                    indicator: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+        // ✅ WRAP IN STACK FOR LOADING OVERLAY
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 40),
+                    const LogoWidget(),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Welcome Back!',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF2D2D2D),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        labelColor: const Color(0xFF2D2D2D),
+                        unselectedLabelColor: const Color(0xFF757575),
+                        labelStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        tabs: const [
+                          Tab(text: 'Phone Number (OTP)'),
+                          Tab(text: 'Email & Password'),
+                        ],
+                      ),
                     ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    labelColor: const Color(0xFF2D2D2D),
-                    unselectedLabelColor: const Color(0xFF757575),
-                    labelStyle: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      height: 360,
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildPhoneLoginTab(),
+                          _buildEmailLoginTab(),
+                        ],
+                      ),
                     ),
-                    tabs: const [
-                      Tab(text: 'Phone Number (OTP)'),
-                      Tab(text: 'Email & Password'),
-                    ],
-                  ),
+                  ],
                 ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  height: 360,
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildPhoneLoginTab(),
-                      _buildEmailLoginTab(),
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+            // ✅ ADD LOADING OVERLAY
+            if (_isLoading)
+              Container(
+                color: Colors.black.withOpacity(0.3),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFE53935),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -148,6 +279,7 @@ class _LoginScreenState extends State<LoginScreen>
               child: TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
+                enabled: !_isLoading, // ✅ DISABLE WHEN LOADING
                 decoration: InputDecoration(
                   hintText: 'Enter your mobile number',
                   hintStyle: const TextStyle(
@@ -180,9 +312,8 @@ class _LoginScreenState extends State<LoginScreen>
           width: double.infinity,
           height: 56,
           child: ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/otp');
-            },
+            // ✅ CHANGE THIS LINE - Call API method
+            onPressed: _isLoading ? null : _handlePhoneLogin,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE53935),
               foregroundColor: Colors.white,
@@ -190,19 +321,28 @@ class _LoginScreenState extends State<LoginScreen>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
+              disabledBackgroundColor: const Color(0xFFE53935).withOpacity(0.5),
             ),
-            child: const Text(
-              'Continue',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            // ✅ ADD LOADING INDICATOR
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text(
+                    'Continue',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 16),
-        
-
         Center(
           child: RichText(
             text: TextSpan(
@@ -238,6 +378,7 @@ class _LoginScreenState extends State<LoginScreen>
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
+          enabled: !_isLoading, // ✅ DISABLE WHEN LOADING
           decoration: InputDecoration(
             hintText: 'Enter your registered email',
             hintStyle: const TextStyle(
@@ -266,6 +407,7 @@ class _LoginScreenState extends State<LoginScreen>
         TextField(
           controller: _passwordController,
           obscureText: _obscurePassword,
+          enabled: !_isLoading, // ✅ DISABLE WHEN LOADING
           decoration: InputDecoration(
             hintText: 'Enter your password',
             hintStyle: const TextStyle(
@@ -305,7 +447,7 @@ class _LoginScreenState extends State<LoginScreen>
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(
-            onPressed: () {
+            onPressed: _isLoading ? null : () { // ✅ DISABLE WHEN LOADING
               Navigator.pushNamed(context, '/forgot-password');
             },
             style: TextButton.styleFrom(
@@ -327,7 +469,8 @@ class _LoginScreenState extends State<LoginScreen>
           width: double.infinity,
           height: 56,
           child: ElevatedButton(
-            onPressed: () {},
+            // ✅ CHANGE THIS LINE - Call API method
+            onPressed: _isLoading ? null : _handleEmailLogin,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE53935),
               foregroundColor: Colors.white,
@@ -335,19 +478,28 @@ class _LoginScreenState extends State<LoginScreen>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
+              disabledBackgroundColor: const Color(0xFFE53935).withOpacity(0.5),
             ),
-            child: const Text(
-              'Login',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            // ✅ ADD LOADING INDICATOR
+            child: _isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text(
+                    'Login',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 16),
-        
-        
         Center(
           child: RichText(
             text: TextSpan(
