@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../../config/api_config.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,6 +14,46 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'Offers';
 
+  List<dynamic> _restaurants = [];
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRestaurants();
+  }
+
+  Future<void> _fetchRestaurants() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.restaurantsEndpoint}');
+      final response = await http.get(url, headers: ApiConfig.headers);
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        setState(() {
+          _restaurants = jsonResponse['data'];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _hasError = true;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -19,15 +62,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-     return Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Zenzio',
           style: TextStyle(
@@ -46,66 +85,26 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-    // return Scaffold(
-    //   backgroundColor: Colors.white,
-    //   appBar: AppBar(
-    //     backgroundColor: Colors.white,
-    //     elevation: 0,
-    //     leading: IconButton(
-    //       icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
-    //       onPressed: () => Navigator.pop(context),
-    //     ),
-    //     title: const Text(
-    //       'Zenzio',
-    //       style: TextStyle(
-    //         color: Color(0xFF2D2D2D),
-    //         fontSize: 18,
-    //         fontWeight: FontWeight.w600,
-    //       ),
-    //     ),
-    //     actions: [
-    //       IconButton(
-    //         icon: const Icon(Icons.search, color: Color(0xFFE53935)),
-    //         onPressed: () {},
-    //       ),
-    //     ],
-    //   ),
       body: Column(
         children: [
+          // 🔍 Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
+              onChanged: (value) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Search for restaurants or dishes',
-                hintStyle: const TextStyle(
-                  color: Color(0xFFBDBDBD),
-                  fontSize: 14,
-                ),
                 prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.mic, color: Color(0xFF9E9E9E)),
-                  onPressed: () {},
-                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE53935)),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
               ),
             ),
           ),
+
+          // 🔘 Filter Chips
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: SingleChildScrollView(
@@ -123,56 +122,52 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
+
           const SizedBox(height: 16),
+
+          // 📦 Restaurant List
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                _buildRestaurantCard(
-                  'Burger Kingdom',
-                  'American • Burgers',
-                  '20-30 min',
-                  '4.8',
-                  'assets/burger.jpg',
-                  '25% OFF',
-                ),
-                _buildRestaurantCard(
-                  'Pizza Paradise',
-                  'Italian • Pizza',
-                  '25-35 min',
-                  '4.6',
-                  'assets/pizza.jpg',
-                  'Free Delivery',
-                ),
-                _buildRestaurantCard(
-                  'Sushi Master',
-                  'Japanese • Sushi',
-                  '30-45 min',
-                  '4.9',
-                  'assets/sushi.jpg',
-                  null,
-                ),
-                _buildRestaurantCard(
-                  'Taco Fiesta',
-                  'Mexican • Tacos',
-                  '25-40 min',
-                  '4.5',
-                  'assets/taco.jpg',
-                  '30% OFF',
-                ),
-                _buildRestaurantCard(
-                  'Noodle House',
-                  'Asian • Noodles',
-                  '20-30 min',
-                  '4.3',
-                  'assets/noodles.jpg',
-                  null,
-                ),
-              ],
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _hasError
+                    ? const Center(child: Text('Failed to load restaurants'))
+                    : _restaurants.isEmpty
+                        ? const Center(child: Text('No restaurants found'))
+                        : RefreshIndicator(
+                            onRefresh: _fetchRestaurants,
+                            child: ListView.builder(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: _restaurants.length,
+                              itemBuilder: (context, index) {
+                                final restaurant = _restaurants[index];
+
+                                // Search filtering
+                                if (_searchController.text.isNotEmpty &&
+                                    !restaurant['rest_name']
+                                        .toString()
+                                        .toLowerCase()
+                                        .contains(_searchController.text
+                                            .toLowerCase())) {
+                                  return const SizedBox.shrink();
+                                }
+
+                                return _buildRestaurantCard(
+                                  restaurant['rest_name'] ?? 'Unknown',
+                                  restaurant['rest_address'] ?? '',
+                                  '20–30 min', // You can update dynamically later
+                                  '4.5', // Placeholder rating
+                                  restaurant['rest_logo'] ?? '',
+                                  null, // No offers from API yet
+                                );
+                              },
+                            ),
+                          ),
           ),
         ],
       ),
+
+      // 🛒 Floating Cart Button
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.pushNamed(context, '/cart');
@@ -183,6 +178,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // 🔹 Filter Chip
   Widget _buildFilterChip(String label, bool isSelected) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -204,14 +200,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // 🔹 Restaurant Card
   Widget _buildRestaurantCard(
     String name,
     String cuisine,
     String time,
     String rating,
-    String image,
+    String imagePath,
     String? offer,
   ) {
+    // Convert backend logo to valid URL
+    final String imageUrl = imagePath.isNotEmpty
+        ? 'https://backend.zenzio.in${imagePath.replaceFirst("/root/choozy-backend", "")}'
+        : '';
+
     return GestureDetector(
       onTap: () {
         Navigator.pushNamed(context, '/restaurant-detail');
@@ -232,23 +234,31 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 🍴 Restaurant Image
             Stack(
               children: [
-                Container(
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
-                    ),
-                  ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.restaurant,
-                      size: 50,
-                      color: Color(0xFFE0E0E0),
-                    ),
-                  ),
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          height: 160,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
+                            height: 160,
+                            color: Colors.grey[200],
+                            child: const Icon(Icons.restaurant,
+                                size: 50, color: Colors.grey),
+                          ),
+                        )
+                      : Container(
+                          height: 160,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.restaurant,
+                              size: 50, color: Colors.grey),
+                        ),
                 ),
                 if (offer != null)
                   Positioned(
@@ -256,9 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     left: 12,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
+                          horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: offer.contains('Free')
                             ? const Color(0xFF4CAF50)
@@ -277,11 +285,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
               ],
             ),
+
+            // 🍽 Restaurant Info
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Name + Rating
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -297,11 +308,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.star,
-                            size: 16,
-                            color: Color(0xFFE53935),
-                          ),
+                          const Icon(Icons.star,
+                              size: 16, color: Color(0xFFE53935)),
                           const SizedBox(width: 4),
                           Text(
                             rating,

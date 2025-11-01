@@ -18,8 +18,8 @@ static const String signupEndpoint = '$apiVersion/users';
   static const String logoutEndpoint = '$apiVersion/auth/logout';
   
 
-    static const String foodItemsEndpoint = '$baseUrl/food-items';
-    
+    // static const String foodItemsEndpoint = '$baseUrl/food-items';
+
   // ==================== USER ENDPOINTS ====================
   static const String usersEndpoint = '$apiVersion/users';
   static const String userProfileEndpoint = '$apiVersion/users/me';
