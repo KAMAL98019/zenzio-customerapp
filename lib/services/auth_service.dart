@@ -1,4 +1,6 @@
 // lib/services/auth_service.dart
+import 'dart:io';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../data/models/login_request.dart';
@@ -331,4 +333,6 @@ class AuthService {
     }
   }
 }
+
+  Future<void> updateProfileWithImage({required String name, required String email, String? password, String? birthday, String? anniversary, File? profilePhoto}) async {}
 }

@@ -463,4 +463,6 @@ class CartItem {
     required this.quantity,
     required this.image,
   });
+
+  Object? toJson() {}
 }

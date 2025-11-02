@@ -1,3 +1,4 @@
+// lib/data/models/user_model.dart
 class User {
   final String? id;
   final String? name;
@@ -5,9 +6,10 @@ class User {
   final String? mobile;
   final String? countryCode;
   final String? profilePhoto;
-  final String? customerId;
-  final DateTime? birthday;
-  final DateTime? anniversary;
+  final String? birthday;
+  final String? anniversary;
+  final bool? emailVerified;
+  final bool? phoneVerified;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -18,26 +20,36 @@ class User {
     this.mobile,
     this.countryCode,
     this.profilePhoto,
-    this.customerId,
     this.birthday,
     this.anniversary,
+    this.emailVerified,
+    this.phoneVerified,
     this.createdAt,
     this.updatedAt,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id']?.toString() ?? json['_id']?.toString(),
-      name: json['name'],
-      email: json['email'],
-      mobile: json['mobile'] ?? json['phone'],
-      countryCode: json['countryCode'] ?? json['country_code'],
-      profilePhoto: json['profilePhoto'] ?? json['profile_image'] ?? json['avatar'],
-      customerId: json['customerId']?.toString(),
-      birthday: json['birthday'] != null ? DateTime.tryParse(json['birthday']) : null,
-      anniversary: json['anniversary'] != null ? DateTime.tryParse(json['anniversary']) : null,
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt']) : null,
+      id: json['id']?.toString(),
+      name: json['name']?.toString(),
+      email: json['email']?.toString(),
+      mobile: json['mobile']?.toString() ?? json['phone']?.toString(),
+      countryCode: json['countryCode']?.toString() ?? json['country_code']?.toString(),
+      profilePhoto: json['profilePhoto']?.toString() ?? json['profile_photo']?.toString(),
+      birthday: json['birthday']?.toString(),
+      anniversary: json['anniversary']?.toString(),
+      emailVerified: json['emailVerified'] ?? json['email_verified'],
+      phoneVerified: json['phoneVerified'] ?? json['phone_verified'],
+      createdAt: json['createdAt'] != null 
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : (json['created_at'] != null 
+              ? DateTime.tryParse(json['created_at'].toString())
+              : null),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString())
+          : (json['updated_at'] != null
+              ? DateTime.tryParse(json['updated_at'].toString())
+              : null),
     );
   }
 
@@ -49,9 +61,10 @@ class User {
       'mobile': mobile,
       'countryCode': countryCode,
       'profilePhoto': profilePhoto,
-      'customerId': customerId,
-      'birthday': birthday?.toIso8601String(),
-      'anniversary': anniversary?.toIso8601String(),
+      'birthday': birthday,
+      'anniversary': anniversary,
+      'emailVerified': emailVerified,
+      'phoneVerified': phoneVerified,
       'createdAt': createdAt?.toIso8601String(),
       'updatedAt': updatedAt?.toIso8601String(),
     };
@@ -64,9 +77,10 @@ class User {
     String? mobile,
     String? countryCode,
     String? profilePhoto,
-    String? customerId,
-    DateTime? birthday,
-    DateTime? anniversary,
+    String? birthday,
+    String? anniversary,
+    bool? emailVerified,
+    bool? phoneVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -77,9 +91,10 @@ class User {
       mobile: mobile ?? this.mobile,
       countryCode: countryCode ?? this.countryCode,
       profilePhoto: profilePhoto ?? this.profilePhoto,
-      customerId: customerId ?? this.customerId,
       birthday: birthday ?? this.birthday,
       anniversary: anniversary ?? this.anniversary,
+      emailVerified: emailVerified ?? this.emailVerified,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

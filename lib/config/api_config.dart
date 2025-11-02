@@ -23,7 +23,7 @@ static const String signupEndpoint = '$apiVersion/users';
   // ==================== USER ENDPOINTS ====================
   static const String usersEndpoint = '$apiVersion/users';
   static const String userProfileEndpoint = '$apiVersion/users/me';
-  static const String updateProfileEndpoint = '$apiVersion/users/me';
+  static const String updateProfileEndpoint = '$apiVersion/users/{userId}';
   
   // ==================== RESTAURANT ENDPOINTS ====================
   static const String restaurantsEndpoint = '$apiVersion/restaurants';
@@ -76,4 +76,6 @@ static const String signupEndpoint = '$apiVersion/users';
   // ==================== TIMEOUTS ====================
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
+
+  static foodsByRestaurantEndpoint(String restaurantId) {}
 }

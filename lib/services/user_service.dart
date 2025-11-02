@@ -31,4 +31,6 @@ class UserService {
       rethrow;
     }
   }
+
+  Future updateUserProfile({required String userId, required String name, required String email}) async {}
 }

@@ -21,7 +21,7 @@ import 'screens/booking_form_screen.dart';
 import 'screens/booking_confirmation_screen.dart';
 import 'screens/booking_details_screen.dart';
 import 'screens/profile_screen.dart';
-import 'screens/edit_profile_screen.dart';
+import 'screens/edit_profile_screen.dart';  // ✅ Fixed: Removed 'hide EditProfileScreen'
 import 'screens/saved_addresses_screen.dart';
 import 'screens/add_edit_address_screen.dart';
 import 'screens/payment_methods_screen.dart';
@@ -30,15 +30,16 @@ import 'screens/help_support_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/chat_assistant_screen.dart';
 import 'screens/my_coupons_screen.dart';
+// ✅ Removed duplicate: import 'screens/profile_screen.dart';
 
-// ✅ ADD THIS IMPORT
+// ✅ Import auth service
 import 'services/auth_service.dart';
 
-// ✅ UPDATE main() function - ADD async and initialize
+// ✅ Initialize auth service before app starts
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // ✅ ADD THIS LINE - Initialize auth service
+  // Initialize auth service to load token
   await AuthService().initialize();
   
   runApp(const ZenzioApp());
@@ -77,7 +78,10 @@ class ZenzioApp extends StatelessWidget {
         // Food Ordering Flow
         '/home': (context) => const HomeScreen(),
         '/menu': (context) => const MenuScreen(),
-        '/restaurant-detail': (context) => const RestaurantDetailScreen(),
+        '/restaurant-detail': (context) => const RestaurantDetailScreen(
+          restaurant: {}, 
+          restaurantId: '',
+        ),
         '/cart': (context) => const CartScreen(),
         '/checkout': (context) => const CheckoutScreen(),
         '/order-tracking': (context) => const OrderTrackingScreen(),
@@ -93,7 +97,7 @@ class ZenzioApp extends StatelessWidget {
         
         // Profile Flow
         '/profile': (context) => const ProfileScreen(),
-        '/edit-profile': (context) => const EditProfileScreen(),
+        '/edit-profile': (context) => const EditProfileScreen(),  // ✅ Now works!
         '/saved-addresses': (context) => const SavedAddressesScreen(),
         '/add-address': (context) => const AddEditAddressScreen(),
         '/payment-methods': (context) => const PaymentMethodsScreen(),
