@@ -18,7 +18,7 @@ static const String signupEndpoint = '$apiVersion/users';
   static const String logoutEndpoint = '$apiVersion/auth/logout';
   
 
-    // static const String foodItemsEndpoint = '$baseUrl/food-items';
+    static const String foodItemsEndpoint = '$baseUrl/food-items';
 
   // ==================== USER ENDPOINTS ====================
   static const String usersEndpoint = '$apiVersion/users';
@@ -42,13 +42,13 @@ static const String signupEndpoint = '$apiVersion/users';
   // ==================== ADDRESS ENDPOINTS ====================
   static const String addressesEndpoint = '$apiVersion/addresses';
   static String addressDetailEndpoint(String id) => '$apiVersion/addresses/$id';
-  
   // ==================== CART ENDPOINTS ====================
-  static const String cartEndpoint = '$apiVersion/cart';
-  static const String addToCartEndpoint = '$apiVersion/cart/add';
-  static const String updateCartEndpoint = '$apiVersion/cart/update';
-  static const String removeFromCartEndpoint = '$apiVersion/cart/remove';
-  static const String clearCartEndpoint = '$apiVersion/cart/clear';
+static const String cartEndpoint = '$apiBaseUrl/cart';
+static const String addToCartEndpoint = '$apiBaseUrl/carts/items';
+static const String updateCartEndpoint = '$apiBaseUrl/carts/update';
+static const String removeFromCartEndpoint = '$apiBaseUrl/carts/remove';
+static const String clearCartEndpoint = '$apiBaseUrl/carts/clear';
+
   
   // ==================== PAYMENT ENDPOINTS ====================
   static const String paymentMethodsEndpoint = '$apiVersion/payment-methods';

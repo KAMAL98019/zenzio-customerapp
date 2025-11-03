@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../widgets/safe_screen.dart'; // ✅ Add this
+
 import 'screens/login_screen.dart';
 import 'screens/otp_verify_screen.dart';
 import 'screens/signup_screen.dart';
@@ -20,6 +22,7 @@ import 'screens/booking_detail_screen.dart';
 import 'screens/booking_form_screen.dart';
 import 'screens/booking_confirmation_screen.dart';
 import 'screens/booking_details_screen.dart';
+
 import 'screens/profile_screen.dart';
 import 'screens/edit_profile_screen.dart';  // ✅ Fixed: Removed 'hide EditProfileScreen'
 import 'screens/saved_addresses_screen.dart';

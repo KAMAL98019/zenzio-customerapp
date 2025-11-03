@@ -80,7 +80,6 @@
 //               ),
 //             ),
 
-
 //             const SizedBox(height: 32),
 //             _buildMenuItem(
 //               context,
@@ -297,7 +296,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: Color(0xFFE53935))),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFFE53935)),
+        ),
       );
     }
 
@@ -337,14 +338,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFFE53935),
                 shape: BoxShape.circle,
-                image: _user!.profilePhoto != null
+                image: (_user?.profilePhoto ?? '').isNotEmpty
                     ? DecorationImage(
-                        image: NetworkImage(_user!.profilePhoto!),
+                        image: NetworkImage(
+                          _user!.profilePhoto!.startsWith('http')
+                              ? _user!.profilePhoto!
+                              : 'https://backend.zenzio.in${_user!.profilePhoto!}',
+                        ),
                         fit: BoxFit.cover,
                       )
                     : null,
               ),
-              child: _user!.profilePhoto == null
+              child: (_user?.profilePhoto ?? '').isEmpty
                   ? const Icon(Icons.person, size: 50, color: Colors.white)
                   : null,
             ),
@@ -362,26 +367,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 4),
             Text(
               _user!.email ?? '',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF757575),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
             ),
             const SizedBox(height: 4),
             Text(
               _user!.mobile ?? '',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF757575),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
             ),
 
             const SizedBox(height: 16),
 
             // Edit Profile
             OutlinedButton.icon(
-              onPressed: () {
-                Navigator.pushNamed(context, '/edit-profile');
+              onPressed: () async {
+                final updated = await Navigator.pushNamed(
+                  context,
+                  '/edit-profile',
+                );
+                if (updated == true) {
+                  _loadUser(); // 🔁 Reload user data from SharedPreferences
+                }
               },
               icon: const Icon(Icons.edit, color: Color(0xFFE53935), size: 18),
               label: const Text(
@@ -392,7 +397,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 10,
+                ),
                 side: const BorderSide(color: Color(0xFFE53935)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -401,12 +409,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
 
             const SizedBox(height: 32),
-            _buildMenuItem(context, Icons.location_on_outlined, 'Saved Addresses', '/saved-addresses'),
-            _buildMenuItem(context, Icons.payment_outlined, 'Payment Methods', '/payment-methods'),
-            _buildMenuItem(context, Icons.notifications_outlined, 'Notifications', '/notifications'),
-            _buildMenuItem(context, Icons.local_offer_outlined, 'My Coupons', '/my-coupons'),
-            _buildMenuItem(context, Icons.help_outline, 'Help & Support', '/help-support'),
-            _buildMenuItem(context, Icons.settings_outlined, 'Settings', '/settings'),
+            _buildMenuItem(
+              context,
+              Icons.location_on_outlined,
+              'Saved Addresses',
+              '/saved-addresses',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.payment_outlined,
+              'Payment Methods',
+              '/payment-methods',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.notifications_outlined,
+              'Notifications',
+              '/notifications',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.local_offer_outlined,
+              'My Coupons',
+              '/my-coupons',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.help_outline,
+              'Help & Support',
+              '/help-support',
+            ),
+            _buildMenuItem(
+              context,
+              Icons.settings_outlined,
+              'Settings',
+              '/settings',
+            ),
 
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -434,7 +472,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, IconData icon, String title, String? route) {
+  Widget _buildMenuItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String? route,
+  ) {
     return InkWell(
       onTap: () {
         if (route != null) {
@@ -446,9 +489,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           border: Border(
-            bottom: BorderSide(
-              color: const Color(0xFFE0E0E0).withOpacity(0.5),
-            ),
+            bottom: BorderSide(color: const Color(0xFFE0E0E0).withOpacity(0.5)),
           ),
         ),
         child: Row(
@@ -465,7 +506,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF9E9E9E)),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Color(0xFF9E9E9E),
+            ),
           ],
         ),
       ),
@@ -477,12 +522,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Logout', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
-        content: const Text('Are you sure you want to logout?', style: TextStyle(fontSize: 14, color: Color(0xFF757575))),
+        title: const Text(
+          'Logout',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+        content: const Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF757575), fontWeight: FontWeight.w500)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: Color(0xFF757575),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -493,9 +550,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE53935),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.w600)),
+            child: const Text(
+              'Logout',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),

@@ -326,12 +326,11 @@
 //   }
 // }
 
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:zenzio_customer/screens/restaurant_detail_screen.dart';
-import '../../config/api_config.dart';
+import 'restaurant_detail_screen.dart';
+import '../config/api_config.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -342,7 +341,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedFilter = 'Offers';
 
   List<dynamic> _restaurants = [];
   bool _isLoading = true;
@@ -351,10 +349,15 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchRestaurants();
+    // ✅ Use addPostFrameCallback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchRestaurants();
+    });
   }
 
   Future<void> _fetchRestaurants() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -362,21 +365,42 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.restaurantsEndpoint}');
-      final response = await http.get(url, headers: ApiConfig.headers);
+      print('🌐 Fetching restaurants from: $url');
+      
+      final response = await http.get(
+        url,
+        headers: ApiConfig.headers,
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () {
+          throw Exception('Request timeout');
+        },
+      );
+
+      print('📥 Restaurant API Response: ${response.statusCode}');
+
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
+        print('✅ Restaurants loaded: ${jsonResponse['data']?.length ?? 0}');
+        
         setState(() {
-          _restaurants = jsonResponse['data'];
+          _restaurants = jsonResponse['data'] ?? [];
           _isLoading = false;
         });
       } else {
+        print('❌ Failed to load restaurants: ${response.statusCode}');
         setState(() {
           _hasError = true;
           _isLoading = false;
         });
       }
     } catch (e) {
+      print('❌ Error fetching restaurants: $e');
+      
+      if (!mounted) return;
+      
       setState(() {
         _hasError = true;
         _isLoading = false;
@@ -430,22 +454,83 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(10),
                   borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                 ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFFE53935)),
+                ),
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           // 📦 Restaurant List
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFFE53935),
+                    ),
+                  )
                 : _hasError
-                    ? const Center(child: Text('Failed to load restaurants'))
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Failed to load restaurants',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: _fetchRestaurants,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE53935),
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
                     : _restaurants.isEmpty
-                        ? const Center(child: Text('No restaurants found'))
+                        ? const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.restaurant,
+                                  size: 64,
+                                  color: Colors.grey,
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'No restaurants found',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
                         : RefreshIndicator(
                             onRefresh: _fetchRestaurants,
+                            color: const Color(0xFFE53935),
                             child: ListView.builder(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               itemCount: _restaurants.length,
@@ -461,7 +546,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   return const SizedBox.shrink();
                                 }
 
-                                // ✅ Pass restaurantId and restaurant data
                                 return _buildRestaurantCard(
                                   context,
                                   restaurant,
@@ -472,15 +556,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
           ),
         ],
-      ),
-
-      // 🛒 Floating Cart Button
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/cart');
-        },
-        backgroundColor: const Color(0xFFE53935),
-        child: const Icon(Icons.shopping_cart),
       ),
     );
   }
@@ -495,7 +570,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final String cuisine = restaurant['rest_address'] ?? '';
     final String avgCost = restaurant['avg_cost_two']?.toString() ?? '0';
     final String imagePath = restaurant['rest_logo'] ?? '';
-    final String restaurantId = restaurant['id'] ?? '';
+    final String restaurantId = restaurant['id']?.toString() ?? '';
 
     final String imageUrl = imagePath.isNotEmpty
         ? 'https://backend.zenzio.in${imagePath.replaceFirst("/root/choozy-backend", "")}'
@@ -503,6 +578,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return GestureDetector(
       onTap: () {
+        if (restaurantId.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Invalid restaurant ID'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
         // ✅ Navigate to restaurant detail screen
         Navigator.push(
           context,
@@ -531,31 +616,46 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 🍴 Restaurant Image
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: imageUrl.isNotEmpty
-                      ? Image.network(
-                          imageUrl,
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      height: 160,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
                           height: 160,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: 160,
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.restaurant,
-                                size: 50, color: Colors.grey),
+                          color: Colors.grey[200],
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                              color: const Color(0xFFE53935),
+                            ),
                           ),
-                        )
-                      : Container(
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        print('❌ Image load error for $name: $error');
+                        return Container(
                           height: 160,
                           color: Colors.grey[200],
                           child: const Icon(Icons.restaurant,
                               size: 50, color: Colors.grey),
-                        ),
-                ),
-              ],
+                        );
+                      },
+                    )
+                  : Container(
+                      height: 160,
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.restaurant,
+                          size: 50, color: Colors.grey),
+                    ),
             ),
 
             // 🍽 Restaurant Info

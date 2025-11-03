@@ -1,4 +1,3 @@
-// lib/services/api_service.dart
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -21,31 +20,16 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
-  String? _authToken;
-
-  // Set auth token
-  void setAuthToken(String? token) {
-    _authToken = token;
-  }
-
-  // Get auth token
-  String? get authToken => _authToken;
-
-  // Get headers
-  Map<String, String> _getHeaders({bool requiresAuth = false}) {
-    final headers = Map<String, String>.from(ApiConfig.headers);
-    if (requiresAuth && _authToken != null) {
-      headers['Authorization'] = 'Bearer $_authToken';
-    }
-    return headers;
+  // Get headers (No token logic now)
+  Map<String, String> _getHeaders() {
+    return Map<String, String>.from(ApiConfig.headers);
   }
 
   // Handle response
   Future<dynamic> _handleResponse(http.Response response) async {
     final statusCode = response.statusCode;
-    
+
     try {
-      // Handle empty response
       if (response.body.isEmpty) {
         if (statusCode >= 200 && statusCode < 300) {
           return {'success': true};
@@ -54,17 +38,15 @@ class ApiService {
 
       final body = json.decode(response.body);
 
-      // Success responses
       if (statusCode >= 200 && statusCode < 300) {
         return body;
       }
-      
-      // Error responses
-      final errorMessage = body['message'] ?? 
-                         body['error'] ?? 
-                         body['detail'] ??
-                         'An error occurred';
-      
+
+      final errorMessage = body['message'] ??
+          body['error'] ??
+          body['detail'] ??
+          'An error occurred';
+
       throw ApiException(
         errorMessage,
         statusCode: statusCode,
@@ -72,7 +54,6 @@ class ApiService {
       );
     } catch (e) {
       if (e is ApiException) rethrow;
-      
       throw ApiException(
         'Failed to process response: ${e.toString()}',
         statusCode: statusCode,
@@ -80,198 +61,108 @@ class ApiService {
     }
   }
 
-  // ==================== GET REQUEST ====================
+  // ==================== GET ====================
   Future<dynamic> get(
     String endpoint, {
-    bool requiresAuth = false,
-    Map<String, String>? queryParameters,
+    Map<String, String>? queryParameters, required bool requiresAuth,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint')
           .replace(queryParameters: queryParameters);
 
       print('🌐 GET: $uri');
-
       final response = await http
-          .get(
-            uri,
-            headers: _getHeaders(requiresAuth: requiresAuth),
-          )
+          .get(uri, headers: _getHeaders())
           .timeout(ApiConfig.connectTimeout);
 
       print('✅ Response: ${response.statusCode}');
       return await _handleResponse(response);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Request timeout');
-    } on http.ClientException {
-      throw ApiException('Connection failed');
     } catch (e) {
-      if (e is ApiException) rethrow;
       throw ApiException('Request failed: ${e.toString()}');
     }
   }
 
-  // ==================== POST REQUEST ====================
+  // ==================== POST ====================
   Future<dynamic> post(
     String endpoint, {
     required Map<String, dynamic> body,
-    bool requiresAuth = false,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-
       print('🌐 POST: $uri');
       print('📤 Body: ${json.encode(body)}');
 
       final response = await http
-          .post(
-            uri,
-            headers: _getHeaders(requiresAuth: requiresAuth),
-            body: json.encode(body),
-          )
+          .post(uri, headers: _getHeaders(), body: json.encode(body))
           .timeout(ApiConfig.connectTimeout);
 
       print('✅ Response: ${response.statusCode}');
       return await _handleResponse(response);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Request timeout');
-    } on http.ClientException {
-      throw ApiException('Connection failed');
     } catch (e) {
-      if (e is ApiException) rethrow;
       throw ApiException('Request failed: ${e.toString()}');
     }
   }
 
-  // ==================== PUT REQUEST ====================
+  // ==================== PUT ====================
   Future<dynamic> put(
     String endpoint, {
-    required Map<String, dynamic> body,
-    bool requiresAuth = false,
+    required Map<String, dynamic> body, required bool requiresAuth, required Map<String, String> data,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-
       print('🌐 PUT: $uri');
       print('📤 Body: ${json.encode(body)}');
 
       final response = await http
-          .put(
-            uri,
-            headers: _getHeaders(requiresAuth: requiresAuth),
-            body: json.encode(body),
-          )
+          .put(uri, headers: _getHeaders(), body: json.encode(body))
           .timeout(ApiConfig.connectTimeout);
 
       print('✅ Response: ${response.statusCode}');
       return await _handleResponse(response);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Request timeout');
-    } on http.ClientException {
-      throw ApiException('Connection failed');
     } catch (e) {
-      if (e is ApiException) rethrow;
       throw ApiException('Request failed: ${e.toString()}');
     }
   }
 
-  // ==================== PATCH REQUEST ====================
-  Future<dynamic> patch(
+  // ==================== MULTIPART ====================
+  Future<dynamic> multipartRequest(
     String endpoint, {
-    required Map<String, dynamic> body,
-    bool requiresAuth = false,
+    required String method,
+    Map<String, String>? fields,
+    Map<String, File>? files, required bool requiresAuth,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+      final request = http.MultipartRequest(method, uri);
 
-      print('🌐 PATCH: $uri');
-      print('📤 Body: ${json.encode(body)}');
+      request.headers.addAll(_getHeaders());
 
-      final response = await http
-          .patch(
-            uri,
-            headers: _getHeaders(requiresAuth: requiresAuth),
-            body: json.encode(body),
-          )
-          .timeout(ApiConfig.connectTimeout);
+      if (fields != null) request.fields.addAll(fields);
 
-      print('✅ Response: ${response.statusCode}');
-      return await _handleResponse(response);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Request timeout');
-    } on http.ClientException {
-      throw ApiException('Connection failed');
-    } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException('Request failed: ${e.toString()}');
-    }
-  }
+      if (files != null) {
+        for (var entry in files.entries) {
+          request.files.add(
+            await http.MultipartFile.fromPath(entry.key, entry.value.path),
+          );
+        }
+      }
 
-  // ==================== DELETE REQUEST ====================
-  Future<dynamic> delete(
-    String endpoint, {
-    bool requiresAuth = false,
-  }) async {
-    try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-
-      print('🌐 DELETE: $uri');
-
-      final response = await http
-          .delete(
-            uri,
-            headers: _getHeaders(requiresAuth: requiresAuth),
-          )
-          .timeout(ApiConfig.connectTimeout);
+      print('🌐 MULTIPART: $uri');
+      final streamedResponse =
+          await request.send().timeout(ApiConfig.connectTimeout);
+      final response = await http.Response.fromStream(streamedResponse);
 
       print('✅ Response: ${response.statusCode}');
       return await _handleResponse(response);
-    } on SocketException {
-      throw ApiException('No internet connection');
-    } on TimeoutException {
-      throw ApiException('Request timeout');
-    } on http.ClientException {
-      throw ApiException('Connection failed');
     } catch (e) {
-      if (e is ApiException) rethrow;
-      throw ApiException('Request failed: ${e.toString()}');
+      throw ApiException('Multipart request failed: ${e.toString()}');
     }
-  }
-
-  // ==================== SAVE TOKEN ====================
-  Future<void> saveToken(String token) async {
-    _authToken = token;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token);
-  }
-
-  // ==================== LOAD TOKEN ====================
-  Future<void> loadToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    _authToken = prefs.getString('auth_token');
-  }
-
-  // ==================== CLEAR TOKEN ====================
-  Future<void> clearToken() async {
-    _authToken = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('auth_token');
   }
 }
 
-// Add TimeoutException if not imported
 class TimeoutException implements Exception {
   final String message;
   TimeoutException([this.message = 'Operation timed out']);
-  
   @override
   String toString() => message;
 }

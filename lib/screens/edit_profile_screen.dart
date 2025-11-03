@@ -29,7 +29,7 @@
 //         elevation: 0,
 //         leading: IconButton(
 //           icon: const Icon(Icons.arrow_back, color: Color(0xFFE53935)),
-//           onPressed: () => Navigator.pop(context),
+//           onPressed: () => Navigator.pop(context, true),
 //         ),
 //         title: const Text(
 //           'Edit Profile',
@@ -247,7 +247,7 @@
 //               height: 56,
 //               child: ElevatedButton(
 //                 onPressed: () {
-//                   Navigator.pop(context);
+//                   Navigator.pop(context, true);
 //                   ScaffoldMessenger.of(context).showSnackBar(
 //                     const SnackBar(
 //                       content: Text('Profile updated successfully'),
@@ -295,18 +295,20 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final AuthService _authService = AuthService();
   final ImagePicker _imagePicker = ImagePicker();
-  
+
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
+
   File? _selectedImage;
   String? _currentProfilePhotoUrl;
   DateTime? _birthday;
   DateTime? _anniversary;
   bool _isLoading = false;
   bool _isLoadingProfile = true;
+  
+  get updated => null;
 
   @override
   void initState() {
@@ -316,16 +318,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _loadUserProfile() async {
     setState(() => _isLoadingProfile = true);
-    
+
     try {
       final user = _authService.currentUser;
-      
+
       if (user != null) {
         _nameController.text = user.name ?? '';
         _emailController.text = user.email ?? '';
         _phoneController.text = user.mobile ?? '';
         _currentProfilePhotoUrl = user.profilePhoto;
-        
+
         // Parse birthday and anniversary if available
         if (user.birthday != null) {
           try {
@@ -334,7 +336,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             debugPrint('Error parsing birthday: $e');
           }
         }
-        
+
         if (user.anniversary != null) {
           try {
             _anniversary = DateTime.parse(user.anniversary!);
@@ -399,25 +401,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               const Text(
                 'Choose Profile Photo',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 16),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: Color(0xFFE53935)),
                 title: const Text('Take Photo'),
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pop(context, true);
                   _pickImage(ImageSource.camera);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: Color(0xFFE53935)),
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: Color(0xFFE53935),
+                ),
                 title: const Text('Choose from Gallery'),
                 onTap: () {
-                  Navigator.pop(context);
+                  Navigator.pop(context, true);
                   _pickImage(ImageSource.gallery);
                 },
               ),
@@ -426,7 +428,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   leading: const Icon(Icons.delete, color: Colors.red),
                   title: const Text('Remove Photo'),
                   onTap: () {
-                    Navigator.pop(context);
+                    Navigator.pop(context, true);
                     setState(() {
                       _selectedImage = null;
                       _currentProfilePhotoUrl = null;
@@ -443,8 +445,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _selectDate(BuildContext context, bool isBirthday) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: isBirthday 
-          ? (_birthday ?? DateTime.now().subtract(const Duration(days: 365 * 25)))
+      initialDate: isBirthday
+          ? (_birthday ??
+                DateTime.now().subtract(const Duration(days: 365 * 25)))
           : (_anniversary ?? DateTime.now()),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
@@ -514,8 +517,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await _authService.updateProfileWithImage(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        password: _passwordController.text.isNotEmpty 
-            ? _passwordController.text 
+        password: _passwordController.text.isNotEmpty
+            ? _passwordController.text
             : null,
         birthday: _birthday?.toIso8601String(),
         anniversary: _anniversary?.toIso8601String(),
@@ -523,7 +526,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
 
       if (mounted) {
-        Navigator.pop(context);
+Navigator.pop(context, true); // ✅ Return true to signal success
+if (updated == true) _loadUser();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile updated successfully'),
@@ -572,7 +577,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFFE53935)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, true),
         ),
         title: const Text(
           'Edit Profile',
@@ -607,15 +612,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     fit: BoxFit.cover,
                                   )
                                 : _currentProfilePhotoUrl != null
-                                    ? DecorationImage(
-                                        image: NetworkImage(
-                                          _getImageUrl(_currentProfilePhotoUrl),
-                                        ),
-                                        fit: BoxFit.cover,
-                                      )
-                                    : null,
+                                ? DecorationImage(
+                                    image: NetworkImage(
+                                      _getImageUrl(_currentProfilePhotoUrl),
+                                    ),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
                           ),
-                          child: (_selectedImage == null && _currentProfilePhotoUrl == null)
+                          child:
+                              (_selectedImage == null &&
+                                  _currentProfilePhotoUrl == null)
                               ? const Icon(
                                   Icons.person,
                                   size: 50,
@@ -678,7 +685,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     controller: _phoneController,
                     hint: 'Mobile number',
                     enabled: false,
-                    helperText: 'Mobile number cannot be changed as it\'s your primary identifier',
+                    helperText:
+                        'Mobile number cannot be changed as it\'s your primary identifier',
                   ),
                   const SizedBox(height: 16),
 
@@ -704,7 +712,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     controller: _passwordController,
                     hint: 'Leave blank to keep current password',
                     obscureText: true,
-                    helperText: 'Enter only if you want to change your password',
+                    helperText:
+                        'Enter only if you want to change your password',
                   ),
                   const SizedBox(height: 32),
 
@@ -798,10 +807,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           const SizedBox(height: 4),
           Text(
             helperText,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF9E9E9E),
-            ),
+            style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E)),
           ),
         ],
       ],
@@ -835,7 +841,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.calendar_today, size: 20, color: Color(0xFF9E9E9E)),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 20,
+                  color: Color(0xFF9E9E9E),
+                ),
                 const SizedBox(width: 12),
                 Text(
                   date != null
@@ -855,4 +865,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ],
     );
   }
+  
+  void _loadUser() {}
 }

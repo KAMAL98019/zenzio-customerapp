@@ -20,20 +20,31 @@ class CartItem {
   final String foodId;
   final int quantity;
   final List<AddOn> selectedAddOns;
+  final String restaurantId; // 🧩 Added this
 
   CartItem({
     this.cartId,
     required this.foodId,
     required this.quantity,
     required this.selectedAddOns,
+    required this.restaurantId, // 🧩 Added this
   });
 
-  Map<String, dynamic> toJson() => {
-        'cartId': cartId,
-        'foodId': foodId,
-        'quantity': quantity,
-        'selectedAddOns': selectedAddOns.map((e) => e.toJson()).toList(),
-      };
+ Map<String, dynamic> toJson() {
+  final data = {
+    'foodId': foodId,
+    'quantity': quantity,
+    'selectedAddOns': selectedAddOns.map((e) => e.toJson()).toList(),
+  };
+
+  if (cartId != null) {
+    data['cartId'] = cartId as Object;
+  }
+
+  return data;
+}
+
+
 
   factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
         cartId: json['cartId'],
@@ -42,5 +53,6 @@ class CartItem {
         selectedAddOns: (json['selectedAddOns'] as List<dynamic>? ?? [])
             .map((e) => AddOn.fromJson(e))
             .toList(),
+        restaurantId: json['restaurantId'] ?? '', // 🧩 Parse it here
       );
 }

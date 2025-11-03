@@ -35,7 +35,7 @@ class User {
       email: json['email']?.toString(),
       mobile: json['mobile']?.toString() ?? json['phone']?.toString(),
       countryCode: json['countryCode']?.toString() ?? json['country_code']?.toString(),
-      profilePhoto: json['profilePhoto']?.toString() ?? json['profile_photo']?.toString(),
+     profilePhoto: json['profilePhoto'],
       birthday: json['birthday']?.toString(),
       anniversary: json['anniversary']?.toString(),
       emailVerified: json['emailVerified'] ?? json['email_verified'],
@@ -96,7 +96,7 @@ class User {
       emailVerified: emailVerified ?? this.emailVerified,
       phoneVerified: phoneVerified ?? this.phoneVerified,
       createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
+      updatedAt: updatedAt ??   this.updatedAt,
     );
   }
 }

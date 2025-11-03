@@ -87,50 +87,65 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // ✅ ADD THIS METHOD - Handle Email Login
-  Future<void> _handleEmailLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+ // ✅ Updated _handleEmailLogin method with better error handling
+Future<void> _handleEmailLogin() async {
+  final email = _emailController.text.trim();
+  final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      _showErrorDialog('Please enter both email and password');
-      return;
-    }
-
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
-      _showErrorDialog('Please enter a valid email address');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-     await _authService.loginWithEmail(
-  email: email,
-  password: password,
-);
-
-
-      setState(() => _isLoading = false);
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Login successful!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        
-        Navigator.pushReplacementNamed(context, '/main-navigation');
-      }
-    } on ApiException catch (e) {
-      setState(() => _isLoading = false);
-      _showErrorDialog(e.message);
-    } catch (e) {
-      setState(() => _isLoading = false);
-      _showErrorDialog('An unexpected error occurred. Please try again.');
-    }
+  if (email.isEmpty || password.isEmpty) {
+    _showErrorDialog('Please enter both email and password');
+    return;
   }
+
+  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+    _showErrorDialog('Please enter a valid email address');
+    return;
+  }
+
+  setState(() => _isLoading = true);
+
+  try {
+    final loginResponse = await _authService.loginWithEmail(
+      email: email,
+      password: password,
+    );
+
+    print('✅ Login response received: ${loginResponse.user?.name}');
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login successful!'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      // ✅ Small delay to ensure all states are updated
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (mounted) {
+        // ✅ Navigate and clear the stack
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/main-navigation',
+          (route) => false,
+        );
+      }
+    }
+  } on ApiException catch (e) {
+    setState(() => _isLoading = false);
+    print('❌ API Exception: ${e.message}');
+    _showErrorDialog(e.message);
+  } catch (e, stackTrace) {
+    setState(() => _isLoading = false);
+    print('❌ Unexpected error: $e');
+    print('📍 Stack trace: $stackTrace');
+    _showErrorDialog('An unexpected error occurred. Please try again.');
+  }
+}
 
   // ✅ ADD THIS METHOD - Show Error Dialog
   void _showErrorDialog(String message) {
