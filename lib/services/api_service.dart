@@ -85,7 +85,7 @@ class ApiService {
   // ==================== POST ====================
   Future<dynamic> post(
     String endpoint, {
-    required Map<String, dynamic> body,
+    required Map<String, dynamic> body, required bool requiresAuth,
   }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');

@@ -44,7 +44,7 @@ static const String signupEndpoint = '$apiVersion/users';
   static String addressDetailEndpoint(String id) => '$apiVersion/addresses/$id';
   // ==================== CART ENDPOINTS ====================
 static const String cartEndpoint = '$apiBaseUrl/cart';
-static const String addToCartEndpoint = '$apiBaseUrl/carts/items';
+static const String addToCartEndpoint = '$apiBaseUrl/cart/items';
 static const String updateCartEndpoint = '$apiBaseUrl/carts/update';
 static const String removeFromCartEndpoint = '$apiBaseUrl/carts/remove';
 static const String clearCartEndpoint = '$apiBaseUrl/carts/clear';

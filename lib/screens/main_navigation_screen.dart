@@ -89,7 +89,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       floatingActionButton: _selectedIndex != 4
           ? FloatingActionButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/cart');
+                Navigator.pushNamed(context, '/cart-rest');
               },
               backgroundColor: const Color(0xFFE53935),
               foregroundColor: Colors.white,

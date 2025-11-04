@@ -35,6 +35,8 @@ class _MenuScreenState extends State<MenuScreen> {
         Uri.parse('https://backend.zenzio.in/api/food-items'),
       );
 
+      if (!mounted) return; // 🧩 Prevent setState after dispose
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['success'] == true && data['data'] != null) {
@@ -50,6 +52,7 @@ class _MenuScreenState extends State<MenuScreen> {
             if (category != null) categorySet.add(category.toString().toLowerCase());
           }
 
+          if (!mounted) return; // 🧩 Double-check before setState
           setState(() {
             _foodItems = foodList;
             cuisines = cuisineSet.toList();
@@ -57,18 +60,21 @@ class _MenuScreenState extends State<MenuScreen> {
             _isLoading = false;
           });
         } else {
+          if (!mounted) return;
           setState(() {
             _isError = true;
             _isLoading = false;
           });
         }
       } else {
+        if (!mounted) return;
         setState(() {
           _isError = true;
           _isLoading = false;
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isError = true;
         _isLoading = false;
@@ -91,18 +97,13 @@ class _MenuScreenState extends State<MenuScreen> {
       final isVeg = item['veg'] ?? false;
 
       final matchesSearch = query.isEmpty || name.contains(query);
-      final matchesCuisine =
-          selectedCuisine == null || cuisine == selectedCuisine;
-      final matchesCategory =
-          selectedCategory == null || category == selectedCategory;
+      final matchesCuisine = selectedCuisine == null || cuisine == selectedCuisine;
+      final matchesCategory = selectedCategory == null || category == selectedCategory;
       final matchesType = selectedType == null ||
           (selectedType == 'veg' && isVeg) ||
           (selectedType == 'non-veg' && !isVeg);
 
-      return matchesSearch &&
-          matchesCuisine &&
-          matchesCategory &&
-          matchesType;
+      return matchesSearch && matchesCuisine && matchesCategory && matchesType;
     }).toList();
   }
 
@@ -144,14 +145,12 @@ class _MenuScreenState extends State<MenuScreen> {
                   children: [
                     // 🔍 Search bar
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: TextField(
                         controller: _searchController,
                         decoration: InputDecoration(
                           hintText: 'Search for dishes...',
-                          prefixIcon: const Icon(Icons.search,
-                              color: Color(0xFF9E9E9E)),
+                          prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
                           filled: true,
                           fillColor: const Color(0xFFF5F5F5),
                           border: OutlineInputBorder(
@@ -163,7 +162,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       ),
                     ),
 
-                    // 🔹 Filters with Dropdowns
+                    // 🔹 Filters
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
@@ -191,7 +190,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
                     const SizedBox(height: 10),
 
-                    // 🔹 Veg / Non-Veg Filter Chips
+                    // 🔹 Veg / Non-Veg Filter
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -211,8 +210,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       child: filteredList.isEmpty
                           ? const Center(child: Text("No dishes found"))
                           : ListView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               itemCount: filteredList.length,
                               itemBuilder: (context, index) {
                                 final item = filteredList[index];
@@ -234,8 +232,8 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   // ✅ Dropdown widget
-  Widget _buildDropdown(String label, List<String> items, String? selectedValue,
-      ValueChanged<String?> onChanged) {
+  Widget _buildDropdown(
+      String label, List<String> items, String? selectedValue, ValueChanged<String?> onChanged) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -259,7 +257,7 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  // ✅ Type Chip (Veg / Non-Veg)
+  // ✅ Veg / Non-Veg chips
   Widget _buildTypeChip(String label, String value) {
     bool isSelected = selectedType == value;
     return FilterChip(
@@ -273,9 +271,9 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
-  // ✅ Menu item widget
-  Widget _buildMenuItem(String name, String description, String price,
-      String imageUrl, String cuisine, String category, bool veg) {
+  // ✅ Menu item
+  Widget _buildMenuItem(String name, String description, String price, String imageUrl,
+      String cuisine, String category, bool veg) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -304,8 +302,7 @@ class _MenuScreenState extends State<MenuScreen> {
                 width: 80,
                 height: 80,
                 color: const Color(0xFFF5F5F5),
-                child: const Icon(Icons.fastfood,
-                    size: 40, color: Color(0xFFE0E0E0)),
+                child: const Icon(Icons.fastfood, size: 40, color: Color(0xFFE0E0E0)),
               ),
             ),
           ),
@@ -318,32 +315,25 @@ class _MenuScreenState extends State<MenuScreen> {
                   children: [
                     Text(name,
                         style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF2D2D2D))),
+                            fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
                     const SizedBox(width: 6),
-                    Icon(Icons.circle,
-                        color: veg ? Colors.green : Colors.red, size: 10),
+                    Icon(Icons.circle, color: veg ? Colors.green : Colors.red, size: 10),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style:
-                      const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+                  style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 6),
                 Text("Cuisine: $cuisine | Category: $category",
-                    style: const TextStyle(
-                        fontSize: 11, color: Color(0xFF757575))),
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF757575))),
                 const SizedBox(height: 6),
                 Text(price,
                     style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFFE53935))),
+                        fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE53935))),
               ],
             ),
           ),

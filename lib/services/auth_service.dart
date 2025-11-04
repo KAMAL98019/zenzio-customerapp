@@ -39,6 +39,7 @@ class AuthService {
       final response = await _apiService.post(
         ApiConfig.loginEndpoint,
         body: {'emailOrMobile': email, 'password': password},
+          requiresAuth: false,
       );
 
       print('📥 Login Response: $response');
@@ -92,6 +93,7 @@ class AuthService {
       final response = await _apiService.post(
         ApiConfig.signupEndpoint,
         body: body,
+         requiresAuth: false, 
       );
 
       final registerResponse = RegisterResponse.fromJson(response);

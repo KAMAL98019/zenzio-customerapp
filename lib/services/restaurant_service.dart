@@ -115,9 +115,22 @@ class RestaurantService {
     return sortedMap;
   }
 
-  // ✅ Fetch foods with category names resolved (fallback version)
-  Future<Map<String, List<Food>>> fetchRestaurantFoodsWithCategories(String restaurantId) async {
-    final foods = await fetchRestaurantFoods(restaurantId);
-    return groupFoodsByCategoryName(foods);
+ Future<Map<String, List<Food>>> fetchRestaurantFoodsWithCategories(String restaurantId) async {
+  if (restaurantId.isEmpty) {
+    print('⚠️ restaurantId is empty. Returning empty list.');
+    return {};
   }
+
+  try {
+    final foods = await fetchRestaurantFoods(restaurantId);
+    print('✅ Successfully fetched ${foods.length} foods for $restaurantId');
+    return groupFoodsByCategoryName(foods);
+  } catch (e, stackTrace) {
+    print('💥 Error in fetchRestaurantFoodsWithCategories: $e');
+    print(stackTrace);
+    return {};
+  }
+}
+
+
 }

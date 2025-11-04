@@ -997,7 +997,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
         backgroundColor: const Color(0xFFE53935),
         onPressed: () {
           try {
-            Navigator.pushNamed(context, '/cart');
+            Navigator.pushNamed(context, '/cart-rest');
           } catch (e) {
             print('❌ Cart navigation error: $e');
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1356,7 +1356,6 @@ class _AddItemSheetState extends State<AddItemSheet> {
                   final cartService = CartService();
 
                  final item = CartItem(
-  restaurantId: widget.restaurantId,
   foodId: widget.food.id,
   quantity: _quantity,
   selectedAddOns: [
@@ -1365,6 +1364,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
     AddOn(name: 'Spice: $_spice', price: 0),
   ],
 );
+
 
 
                   final success = await cartService.addToCart(item);

@@ -13,6 +13,7 @@ import 'screens/home_screen.dart';
 import 'screens/menu_screen.dart';
 import 'screens/restaurant_detail_screen.dart';
 import 'screens/cart_screen.dart';
+import 'screens/cart_rest_screen.dart'; // ✅ NEW: Import the restaurant cart screen
 import 'screens/checkout_screen.dart';
 import 'screens/order_tracking_screen.dart';
 import 'screens/my_orders_screen.dart';
@@ -24,7 +25,7 @@ import 'screens/booking_confirmation_screen.dart';
 import 'screens/booking_details_screen.dart';
 
 import 'screens/profile_screen.dart';
-import 'screens/edit_profile_screen.dart';  // ✅ Fixed: Removed 'hide EditProfileScreen'
+import 'screens/edit_profile_screen.dart';
 import 'screens/saved_addresses_screen.dart';
 import 'screens/add_edit_address_screen.dart';
 import 'screens/payment_methods_screen.dart';
@@ -33,7 +34,6 @@ import 'screens/help_support_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/chat_assistant_screen.dart';
 import 'screens/my_coupons_screen.dart';
-// ✅ Removed duplicate: import 'screens/profile_screen.dart';
 
 // ✅ Import auth service
 import 'services/auth_service.dart';
@@ -85,9 +85,15 @@ class ZenzioApp extends StatelessWidget {
           restaurant: {}, 
           restaurantId: '',
         ),
+        
+        // ✅ NEW: Restaurant cart overview (shows list of restaurants)
+        '/cart-rest': (context) => const CartRestScreen(),
+        
+        // ✅ Cart detail (shows items from a restaurant)
         '/cart': (context) => const CartScreen(),
-        '/checkout': (context) => const CheckoutScreen(),
-        '/order-tracking': (context) => const OrderTrackingScreen(),
+        
+        // '/checkout': (context) => const CheckoutScreen(),
+        // '/order-tracking': (context) => const OrderTrackingScreen(),
         '/my-orders': (context) => const MyOrdersScreen(),
         '/order-details': (context) => const OrderDetailsScreen(),
         
@@ -100,7 +106,7 @@ class ZenzioApp extends StatelessWidget {
         
         // Profile Flow
         '/profile': (context) => const ProfileScreen(),
-        '/edit-profile': (context) => const EditProfileScreen(),  // ✅ Now works!
+        '/edit-profile': (context) => const EditProfileScreen(),
         '/saved-addresses': (context) => const SavedAddressesScreen(),
         '/add-address': (context) => const AddEditAddressScreen(),
         '/payment-methods': (context) => const PaymentMethodsScreen(),

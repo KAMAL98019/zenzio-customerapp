@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class OrderTrackingScreen extends StatelessWidget {
-  const OrderTrackingScreen({super.key});
+  const OrderTrackingScreen({super.key, required orderId});
 
   @override
   Widget build(BuildContext context) {
