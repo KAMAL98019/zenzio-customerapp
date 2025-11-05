@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../widgets/safe_screen.dart'; // ✅ Add this
+import 'package:permission_handler/permission_handler.dart';
 
 import 'screens/login_screen.dart';
 import 'screens/otp_verify_screen.dart';
@@ -82,7 +82,6 @@ class ZenzioApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/menu': (context) => const MenuScreen(),
         '/restaurant-detail': (context) => const RestaurantDetailScreen(
-          restaurant: {}, 
           restaurantId: '',
         ),
         
@@ -96,7 +95,7 @@ class ZenzioApp extends StatelessWidget {
         // '/order-tracking': (context) => const OrderTrackingScreen(),
         '/my-orders': (context) => const MyOrdersScreen(),
         '/order-details': (context) => const OrderDetailsScreen(),
-        
+        '/order-tracking':(context)=>const OrderTrackingScreen(orderId: null,),
         // Booking Flow
         '/bookings': (context) => const BookingsHomeScreen(),
         '/booking-detail': (context) => const BookingDetailScreen(),

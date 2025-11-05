@@ -1,3 +1,4 @@
+import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import '../widgets/logo_widget.dart';
@@ -7,15 +8,16 @@ import '../widgets/social_login_buttons.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
 
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key}); // ✅ Add this
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
+
   late TabController _tabController;
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -23,14 +25,65 @@ class _LoginScreenState extends State<LoginScreen>
   bool _obscurePassword = true;
   String _selectedCountryCode = '+1';
   
-  // ✅ ADD THESE NEW VARIABLES
+  // Auth & Loading
   final AuthService _authService = AuthService();
   bool _isLoading = false;
 
+  // ✅ PERMISSIONS HANDLER
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // ✅ Request permissions right after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestAppPermissions();
+    });
+  }
+
+  // ✅ REQUEST APP PERMISSIONS
+  Future<void> _requestAppPermissions() async {
+    bool granted = await _requestPermissions();
+    if (!granted) {
+      _showPermissionDeniedDialog();
+    }
+  }
+
+  Future<bool> _requestPermissions() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.location,
+      Permission.camera,
+      Permission.photos,
+      Permission.storage,
+    ].request();
+
+    bool allGranted = statuses.values.every((status) => status.isGranted);
+    return allGranted;
+  }
+
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Permissions Required'),
+        content: const Text(
+          'This app needs location, camera, and gallery access to work properly.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              openAppSettings();
+              Navigator.pop(context);
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

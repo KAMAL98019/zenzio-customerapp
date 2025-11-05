@@ -21,38 +21,42 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     fetchRestaurant(restaurantId);
   }
 
-  Future<void> fetchRestaurant(String id) async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://backend.zenzio.in/api/customer/restaurants/$id'),
-      );
+ Future<void> fetchRestaurant(String id) async {
+  try {
+    final response = await http.get(
+      Uri.parse('https://backend.zenzio.in/api/customer/restaurants/$id'),
+    );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          setState(() {
-            restaurant = data['data'];
-            isLoading = false;
-          });
-        } else {
-          setState(() {
-            isError = true;
-            isLoading = false;
-          });
-        }
+    if (!mounted) return; // <-- Add this check
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['success'] == true && data['data'] != null) {
+        setState(() {
+          restaurant = data['data'];
+          isLoading = false;
+        });
       } else {
         setState(() {
           isError = true;
           isLoading = false;
         });
       }
-    } catch (e) {
+    } else {
       setState(() {
         isError = true;
         isLoading = false;
       });
     }
+  } catch (e) {
+    if (!mounted) return; // <-- Check here as well
+    setState(() {
+      isError = true;
+      isLoading = false;
+    });
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -69,9 +73,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
 
     final rest = restaurant!;
-    final imageUrl = rest['rest_logo'] != null
-        ? "https://backend.zenzio.in${rest['rest_logo']}"
-        : null;
+   final logoPath = rest['rest_logo'];
+String? imageUrl;
+
+if (logoPath != null && logoPath.isNotEmpty) {
+  final cleanPath = logoPath.replaceAll('/root/choozy-backend', '');
+  imageUrl = "https://backend.zenzio.in$cleanPath";
+}
+
+print("Restaurant Image URL (Detail): $imageUrl");
+
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -97,18 +108,17 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: imageUrl != null
-                  ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: Icon(Icons.broken_image, size: 80, color: Colors.grey),
-                        );
-                      },
-                    )
-                  : const Center(
-                      child: Icon(Icons.restaurant, size: 80, color: Colors.grey),
-                    ),
+    ? Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const Center(
+          child: Icon(Icons.broken_image, size: 80, color: Colors.grey),
+        ),
+      )
+    : const Center(
+        child: Icon(Icons.restaurant, size: 80, color: Colors.grey),
+      ),
+
             ),
           ),
           SliverToBoxAdapter(

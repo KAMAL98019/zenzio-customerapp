@@ -29,23 +29,27 @@ class _BookingsHomeScreenState extends State<BookingsHomeScreen> {
         Uri.parse('https://backend.zenzio.in/api/customer/restaurants'),
       );
 
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
-        setState(() {
-          _restaurants = jsonData['data'];
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-        });
-      }
+    if (response.statusCode == 200) {
+  final jsonData = json.decode(response.body);
+  if (!mounted) return;
+  setState(() {
+    _restaurants = jsonData['data'];
+    _isLoading = false;
+  });
+} else {
+  if (!mounted) return;
+  setState(() {
+    _isLoading = false;
+    _hasError = true;
+  });
+}
+
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+  if (!mounted) return;
+  setState(() {
+    _isLoading = false;
+    _hasError = true;
+  });
     }
   }
 

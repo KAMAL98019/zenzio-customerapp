@@ -16,6 +16,7 @@ class AddOn {
 }
 
 class CartItem {
+  
   final String foodId;
   final int quantity;
   final List<AddOn> selectedAddOns;

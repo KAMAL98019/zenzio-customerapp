@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/restaurant_detail_screen.dart';
 import 'checkout_screen.dart';
+import '../services/restaurant_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -51,10 +52,20 @@ class _CartScreenState extends State<CartScreen> {
           _cartId = cart['id'] ?? cart['_id'];
           final items = cart['items'] as List;
 
-          final restaurant = cart['items'][0]['food']['restaurant'];
-          _restaurantName = restaurant['rest_name'] ?? 'Unknown Restaurant';
-          _restaurantId = restaurant['_id'];
-          _restaurantData = restaurant;
+         final firstItem = cart['items'].isNotEmpty ? cart['items'][0] : null;
+final restaurant = firstItem != null ? firstItem['food']['restaurant'] : null;
+
+if (restaurant != null) {
+  _restaurantName = restaurant['rest_name'] ?? 'Unknown Restaurant';
+  _restaurantId = restaurant['_id'] ?? restaurant['id'] ?? '';
+  debugPrint("🍽 Restaurant ID fetched: $_restaurantId");
+
+  _restaurantData = restaurant;
+} else {
+  _restaurantName = 'Unknown Restaurant';
+  _restaurantId = '';
+}
+
 
           _cartItems = items.map((item) {
             final food = item['food'];
@@ -258,40 +269,48 @@ class _CartScreenState extends State<CartScreen> {
                       const SizedBox(height: 16),
                       ..._cartItems.map((item) => _buildCartItem(item)),
                       const SizedBox(height: 12),
-                      TextButton.icon(
-                        onPressed: () {
-                          if (_restaurantId == null ||
-                              _restaurantId!.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text('Restaurant details not available.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
 
-                          Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => RestaurantDetailScreen(
-      restaurantId: _restaurantId!,
-      restaurant: const {},
+                      // ✅ Add More Items Button (with restaurantId)
+                    TextButton.icon(
+  onPressed: () async {
+    debugPrint("🛒 Add More Items Clicked — Restaurant ID: $_restaurantId");
+
+    // Check if restaurantId is available
+    if (_restaurantId == null || _restaurantId!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Restaurant details not available.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // ✅ Navigate and wait until user comes back
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RestaurantDetailScreen(
+          restaurantId: _restaurantId!,
+        ),
+      ),
+    );
+
+    // ✅ Reload the cart when returning
+    debugPrint("🔄 Returned from RestaurantDetailScreen — reloading cart...");
+    await _fetchCartData();
+    setState(() {});
+  },
+  icon: const Icon(Icons.add, color: Color(0xFFE53935)),
+  label: const Text(
+    'Add more items',
+    style: TextStyle(
+      color: Color(0xFFE53935),
+      fontWeight: FontWeight.w500,
     ),
   ),
-);
-;
-                        },
-                        icon: const Icon(Icons.add, color: Color(0xFFE53935)),
-                        label: const Text(
-                          'Add more items',
-                          style: TextStyle(
-                            color: Color(0xFFE53935),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+),
+
                     ],
                   ),
                 ),
@@ -513,8 +532,7 @@ class _CartScreenState extends State<CartScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          border:
-                              Border.all(color: const Color(0xFFE53935)),
+                          border: Border.all(color: const Color(0xFFE53935)),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Icon(
@@ -641,6 +659,42 @@ class CartItem {
     required this.image,
   });
 }
+
+
+//   TextButton.icon(
+//   onPressed: () {
+//     debugPrint("🛒 Add More Items Clicked — Restaurant ID: $_restaurantId");
+
+//     // Safely check for restaurant ID
+//     if (_restaurantId == null || _restaurantId!.trim().isEmpty) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text('Restaurant details not available.'),
+//           backgroundColor: Colors.red,
+//         ),
+//       );
+//       return;
+//     }
+
+//     // ✅ Navigate to restaurant detail screen and pass restaurantId
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => RestaurantDetailScreen(
+//           restaurantId: _restaurantId!,
+//         ),
+//       ),
+//     );
+//   },
+//   icon: const Icon(Icons.add, color: Color(0xFFE53935)),
+//   label: const Text(
+//     'Add more items',
+//     style: TextStyle(
+//       color: Color(0xFFE53935),
+//       fontWeight: FontWeight.w500,
+//     ),
+//   ),
+// ),
 
 
 //   import 'dart:convert';

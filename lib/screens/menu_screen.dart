@@ -1,6 +1,12 @@
+// lib/screens/menu_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+
+// models & services from your project
+import '../data/models/food_model.dart';
+import '../data/models/cart_model.dart';      // <- provides CartItem & AddOn
+import '../services/cart_service.dart';       // <- your API wrapper for cart
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -10,18 +16,11 @@ class MenuScreen extends StatefulWidget {
 }
 
 class _MenuScreenState extends State<MenuScreen> {
+  String _selectedFilter = 'Meat';
   final TextEditingController _searchController = TextEditingController();
-  List<dynamic> _foodItems = [];
+
+  List<Food> _foodItems = [];
   bool _isLoading = true;
-  bool _isError = false;
-
-  // 🔹 Filter states
-  String? selectedCuisine;
-  String? selectedCategory;
-  String? selectedType; // "veg" or "non-veg"
-
-  List<String> cuisines = [];
-  List<String> categories = [];
 
   @override
   void initState() {
@@ -31,54 +30,23 @@ class _MenuScreenState extends State<MenuScreen> {
 
   Future<void> fetchFoodItems() async {
     try {
-      final response = await http.get(
-        Uri.parse('https://backend.zenzio.in/api/food-items'),
-      );
-
-      if (!mounted) return; // 🧩 Prevent setState after dispose
-
+      final response = await http.get(Uri.parse('https://backend.zenzio.in/api/food-items'));
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          final foodList = List<Map<String, dynamic>>.from(data['data']);
-          // Extract cuisine and category names dynamically
-          final cuisineSet = <String>{};
-          final categorySet = <String>{};
-
-          for (var item in foodList) {
-            final cuisine = item['cuisine']?['name'];
-            final category = item['category']?['name'];
-            if (cuisine != null) cuisineSet.add(cuisine.toString().toLowerCase());
-            if (category != null) categorySet.add(category.toString().toLowerCase());
-          }
-
-          if (!mounted) return; // 🧩 Double-check before setState
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        if (data['success'] == true && data['data'] is List) {
+          final List<dynamic> foodData = data['data'];
           setState(() {
-            _foodItems = foodList;
-            cuisines = cuisineSet.toList();
-            categories = categorySet.toList();
+         _foodItems = foodData.map<Food>((e) => Food.fromJson(e as Map<String, dynamic>)).toList();
+
             _isLoading = false;
           });
-        } else {
-          if (!mounted) return;
-          setState(() {
-            _isError = true;
-            _isLoading = false;
-          });
+          return;
         }
-      } else {
-        if (!mounted) return;
-        setState(() {
-          _isError = true;
-          _isLoading = false;
-        });
       }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isError = true;
-        _isLoading = false;
-      });
+      throw Exception('Failed to load food items (status: ${response.statusCode})');
+    } catch (e, st) {
+      debugPrint('❌ Error fetching food items: $e\n$st');
+      setState(() => _isLoading = false);
     }
   }
 
@@ -88,41 +56,20 @@ class _MenuScreenState extends State<MenuScreen> {
     super.dispose();
   }
 
-  List<dynamic> _filteredFoodItems() {
-    final query = _searchController.text.toLowerCase();
-    return _foodItems.where((item) {
-      final name = (item['dishname'] ?? '').toLowerCase();
-      final cuisine = (item['cuisine']?['name'] ?? '').toLowerCase();
-      final category = (item['category']?['name'] ?? '').toLowerCase();
-      final isVeg = item['veg'] ?? false;
-
-      final matchesSearch = query.isEmpty || name.contains(query);
-      final matchesCuisine = selectedCuisine == null || cuisine == selectedCuisine;
-      final matchesCategory = selectedCategory == null || category == selectedCategory;
-      final matchesType = selectedType == null ||
-          (selectedType == 'veg' && isVeg) ||
-          (selectedType == 'non-veg' && !isVeg);
-
-      return matchesSearch && matchesCuisine && matchesCategory && matchesType;
-    }).toList();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final filteredList = _filteredFoodItems();
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
-          'Menu',
-          style: TextStyle(
-            color: Color(0xFF2D2D2D),
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          'Order',
+          style: TextStyle(color: Color(0xFF2D2D2D), fontSize: 18, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
         actions: [
@@ -134,146 +81,95 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFFE53935)))
-          : _isError
-              ? const Center(
-                  child: Text('Failed to load menu. Please try again later.'),
-                )
-              : Column(
-                  children: [
-                    // 🔍 Search bar
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search for dishes...',
-                          prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
-                          filled: true,
-                          fillColor: const Color(0xFFF5F5F5),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        onChanged: (value) => setState(() {}),
-                      ),
-                    ),
-
-                    // 🔹 Filters
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _buildDropdown(
-                              "Cuisine",
-                              cuisines,
-                              selectedCuisine,
-                              (val) => setState(() => selectedCuisine = val),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildDropdown(
-                              "Category",
-                              categories,
-                              selectedCategory,
-                              (val) => setState(() => selectedCategory = val),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // 🔹 Veg / Non-Veg Filter
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          _buildTypeChip('Veg', 'veg'),
-                          const SizedBox(width: 8),
-                          _buildTypeChip('Non-Veg', 'non-veg'),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // 🍽️ Food List
-                    Expanded(
-                      child: filteredList.isEmpty
-                          ? const Center(child: Text("No dishes found"))
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              itemCount: filteredList.length,
-                              itemBuilder: (context, index) {
-                                final item = filteredList[index];
-                                return _buildMenuItem(
-                                  item['dishname'] ?? 'No name',
-                                  item['description'] ?? '',
-                                  '₹${item['price'] ?? 0}',
-                                  item['dishimage'] ?? '',
-                                  item['cuisine']?['name'] ?? '',
-                                  item['category']?['name'] ?? '',
-                                  item['veg'] ?? false,
-                                );
-                              },
-                            ),
-                    ),
-                  ],
+      body: Column(
+        children: [
+          // 🔍 Search bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search for restaurants or dishes',
+                prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
+                filled: true,
+                fillColor: const Color(0xFFF5F5F5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
                 ),
-    );
-  }
+              ),
+              onChanged: (query) => setState(() {}),
+            ),
+          ),
 
-  // ✅ Dropdown widget
-  Widget _buildDropdown(
-      String label, List<String> items, String? selectedValue, ValueChanged<String?> onChanged) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButton<String>(
-        value: selectedValue,
-        hint: Text(label),
-        underline: const SizedBox(),
-        isExpanded: true,
-        items: [
-          const DropdownMenuItem(value: null, child: Text("All")),
-          ...items.map((e) => DropdownMenuItem(
-                value: e,
-                child: Text(e[0].toUpperCase() + e.substring(1)),
-              )),
+          // 🔘 Filter chips (UI unchanged)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('Cuisine', false),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Meat', true),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Offers', false),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('Delivery Time', false),
+                ],
+              ),
+            ),
+          ),
+
+          // 🍗 Food items
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: Color(0xFFE53935)))
+                : _foodItems.isEmpty
+                    ? const Center(child: Text('No food items found'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: _foodItems.length,
+                        itemBuilder: (context, index) {
+                          final food = _foodItems[index];
+
+                          // search filter
+                          if (_searchController.text.isNotEmpty &&
+                              !food.foodName.toLowerCase().contains(_searchController.text.toLowerCase())) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return _buildMenuItem(food);
+                        },
+                      ),
+          ),
         ],
-        onChanged: onChanged,
       ),
     );
   }
 
-  // ✅ Veg / Non-Veg chips
-  Widget _buildTypeChip(String label, String value) {
-    bool isSelected = selectedType == value;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() {
-          selectedType = selected ? value : null;
-        });
-      },
+  Widget _buildFilterChip(String label, bool isSelected) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFFE53935) : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? const Color(0xFFE53935) : const Color(0xFFE0E0E0),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? Colors.white : const Color(0xFF757575),
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
-  // ✅ Menu item
-  Widget _buildMenuItem(String name, String description, String price, String imageUrl,
-      String cuisine, String category, bool veg) {
+  Widget _buildMenuItem(Food food) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -282,78 +178,55 @@ class _MenuScreenState extends State<MenuScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE0E0E0)),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: Row(
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              imageUrl,
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                width: 80,
-                height: 80,
-                color: const Color(0xFFF5F5F5),
-                child: const Icon(Icons.fastfood, size: 40, color: Color(0xFFE0E0E0)),
-              ),
+          // 🖼 Image
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(8),
+              image: (food.image != null && food.image!.isNotEmpty)
+                  ? DecorationImage(image: NetworkImage(food.image!), fit: BoxFit.cover)
+                  : null,
             ),
+            child: (food.image == null || food.image!.isEmpty)
+                ? const Center(child: Icon(Icons.restaurant, size: 40, color: Color(0xFFE0E0E0)))
+                : null,
           ),
           const SizedBox(width: 12),
+
+          // 🍴 Details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(name,
-                        style: const TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
-                    const SizedBox(width: 6),
-                    Icon(Icons.circle, color: veg ? Colors.green : Colors.red, size: 10),
-                  ],
-                ),
+                Text(food.foodName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
                 Text(
-                  description,
+                  food.description ?? '',
                   style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 6),
-                Text("Cuisine: $cuisine | Category: $category",
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF757575))),
-                const SizedBox(height: 6),
-                Text(price,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFFE53935))),
+                const SizedBox(height: 8),
+                Text('₹${food.price.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
               ],
             ),
           ),
+
+          // ➕ Add Button
           GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('$name added to cart'),
-                  backgroundColor: const Color(0xFF4CAF50),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-            },
+            onTap: () => _openAddItemSheet(food),
             child: Container(
               width: 36,
               height: 36,
-              decoration: const BoxDecoration(
-                color: Color(0xFFE53935),
-                shape: BoxShape.circle,
-              ),
+              decoration: const BoxDecoration(color: Color(0xFFE53935), shape: BoxShape.circle),
               child: const Icon(Icons.add, color: Colors.white, size: 20),
             ),
           ),
@@ -361,7 +234,995 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   }
+
+  void _openAddItemSheet(Food food) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: AddItemSheet(food: food),
+      ),
+    );
+  }
 }
+
+/// AddItemSheet (same UI & cart logic as your RestaurantDetailScreen)
+class AddItemSheet extends StatefulWidget {
+  final Food food;
+  const AddItemSheet({super.key, required this.food});
+
+  @override
+  State<AddItemSheet> createState() => _AddItemSheetState();
+}
+
+class _AddItemSheetState extends State<AddItemSheet> {
+  int _quantity = 1;
+  String _size = 'Medium';
+  String _spice = 'Medium';
+
+  double get _total {
+    double base = widget.food.price;
+    double extra = _size == 'Large' ? 40 : _size == 'Small' ? -50 : 0;
+    return (base + extra) * _quantity;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // header
+          Row(
+            children: [
+              Expanded(
+                child: Text(widget.food.foodName,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+              ),
+              Text('₹${widget.food.price.toStringAsFixed(0)}',
+                  style: const TextStyle(fontSize: 18, color: Color(0xFFE53935), fontWeight: FontWeight.w600)),
+              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+            ],
+          ),
+
+          if (widget.food.description?.isNotEmpty ?? false)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(widget.food.description!, style: const TextStyle(color: Colors.grey)),
+            ),
+          const SizedBox(height: 24),
+
+          // quantity selector
+          Row(
+            children: [
+              const Text('Quantity', style: TextStyle(fontWeight: FontWeight.w500)),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline, color: Color(0xFFE53935)),
+                onPressed: () {
+                  if (_quantity > 1) setState(() => _quantity--);
+                },
+              ),
+              Text('$_quantity', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              IconButton(
+                icon: const Icon(Icons.add_circle, color: Color(0xFFE53935)),
+                onPressed: () => setState(() => _quantity++),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // size options
+          const Text('Choose your size', style: TextStyle(fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          _buildSizeOption('Small', '-₹50'),
+          _buildSizeOption('Medium', '₹0'),
+          _buildSizeOption('Large', '+₹40'),
+          const SizedBox(height: 16),
+
+          // spice options
+          const Text('Choose spice level', style: TextStyle(fontWeight: FontWeight.w500)),
+          _buildSpiceOption('Mild'),
+          _buildSpiceOption('Medium'),
+          _buildSpiceOption('Hot'),
+          const SizedBox(height: 24),
+
+          // add to cart
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE53935),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _addToCart,
+              child: Text('Add to Cart - ₹${_total.toStringAsFixed(0)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSizeOption(String size, String price) => GestureDetector(
+        onTap: () => setState(() => _size = size),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(color: _size == size ? const Color(0xFFE53935) : const Color(0xFFE0E0E0)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Icon(_size == size ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: _size == size ? const Color(0xFFE53935) : Colors.grey),
+              const SizedBox(width: 8),
+              Text(size),
+              const Spacer(),
+              Text(price),
+            ],
+          ),
+        ),
+      );
+
+  Widget _buildSpiceOption(String spice) => GestureDetector(
+        onTap: () => setState(() => _spice = spice),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(color: _spice == spice ? const Color(0xFFE53935) : const Color(0xFFE0E0E0)),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Icon(_spice == spice ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: _spice == spice ? const Color(0xFFE53935) : Colors.grey),
+              const SizedBox(width: 8),
+              Text(spice),
+            ],
+          ),
+        ),
+      );
+
+  Future<void> _addToCart() async {
+    try {
+      final cartService = CartService();
+      final item = CartItem(
+        foodId: widget.food.id,
+        quantity: _quantity,
+        selectedAddOns: [
+          if (_size == 'Large') AddOn(name: 'Large Size', price: 40),
+          if (_size == 'Small') AddOn(name: 'Small Size', price: -50),
+          AddOn(name: 'Spice: $_spice', price: 0),
+        ],
+      );
+
+      final success = await cartService.addToCart(item);
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? '${widget.food.foodName} added to cart successfully' : 'Failed to add item to cart'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+    } catch (e, st) {
+      debugPrint('❌ Add to cart error: $e\n$st');
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+    }
+  }
+}
+
+
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:http/http.dart' as http;
+
+// class MenuScreen extends StatefulWidget {
+//   const MenuScreen({super.key});
+
+//   @override
+//   State<MenuScreen> createState() => _MenuScreenState();
+// }
+
+// class _MenuScreenState extends State<MenuScreen> {
+//   String _selectedFilter = 'Meat';
+//   final TextEditingController _searchController = TextEditingController();
+
+//   List<dynamic> _foodItems = [];
+//   bool _isLoading = true;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     fetchFoodItems();
+//   }
+
+//   Future<void> fetchFoodItems() async {
+//     try {
+//       final response = await http.get(
+//         Uri.parse('https://backend.zenzio.in/api/food-items'),
+//       );
+
+//       if (response.statusCode == 200) {
+//         final data = json.decode(response.body);
+//         if (data['success'] == true) {
+//           setState(() {
+//             _foodItems = data['data'];
+//             _isLoading = false;
+//           });
+//         }
+//       } else {
+//         throw Exception('Failed to load food items');
+//       }
+//     } catch (e) {
+//       debugPrint('Error fetching food items: $e');
+//       setState(() {
+//         _isLoading = false;
+//       });
+//     }
+//   }
+
+//   @override
+//   void dispose() {
+//     _searchController.dispose();
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.white,
+//       appBar: AppBar(
+//         backgroundColor: Colors.white,
+//         elevation: 0,
+//         leading: IconButton(
+//           icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
+//           onPressed: () => Navigator.pop(context),
+//         ),
+//         title: const Text(
+//           'Order',
+//           style: TextStyle(
+//             color: Color(0xFF2D2D2D),
+//             fontSize: 18,
+//             fontWeight: FontWeight.w600,
+//           ),
+//         ),
+//         centerTitle: true,
+//         actions: [
+//           IconButton(
+//             icon: const Icon(Icons.person, color: Color(0xFFE53935)),
+//             onPressed: () {
+//               Navigator.pushNamed(context, '/profile');
+//             },
+//           ),
+//         ],
+//       ),
+//       body: Column(
+//         children: [
+//           // 🔍 Search Bar
+//           Container(
+//             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+//             child: TextField(
+//               controller: _searchController,
+//               decoration: InputDecoration(
+//                 hintText: 'Search for restaurants or dishes',
+//                 prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
+//                 filled: true,
+//                 fillColor: const Color(0xFFF5F5F5),
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(10),
+//                   borderSide: BorderSide.none,
+//                 ),
+//               ),
+//               onChanged: (query) {
+//                 setState(() {}); // Rebuild UI for filtered list
+//               },
+//             ),
+//           ),
+
+//           // 🔘 Filter Chips
+//           Padding(
+//             padding: const EdgeInsets.symmetric(horizontal: 16.0),
+//             child: SingleChildScrollView(
+//               scrollDirection: Axis.horizontal,
+//               child: Row(
+//                 children: [
+//                   _buildFilterChip('Cuisine', false),
+//                   const SizedBox(width: 8),
+//                   _buildFilterChip('Meat', true),
+//                   const SizedBox(width: 8),
+//                   _buildFilterChip('Offers', false),
+//                   const SizedBox(width: 8),
+//                   _buildFilterChip('Delivery Time', false),
+//                 ],
+//               ),
+//             ),
+//           ),
+
+//           // 🍗 Food List
+//           Expanded(
+//             child: _isLoading
+//                 ? const Center(child: CircularProgressIndicator(color: Color(0xFFE53935)))
+//                 : _foodItems.isEmpty
+//                     ? const Center(child: Text('No food items found'))
+//                     : ListView.builder(
+//                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+//                         itemCount: _foodItems.length,
+//                         itemBuilder: (context, index) {
+//                           final item = _foodItems[index];
+//                           final dishName = item['dishname'] ?? 'Unknown Dish';
+//                           final description = item['description'] ?? '';
+//                           final price = '₹${item['price']}';
+//                           final image = item['dishimage'];
+
+//                           // Apply search filter
+//                           if (_searchController.text.isNotEmpty &&
+//                               !dishName.toLowerCase().contains(_searchController.text.toLowerCase())) {
+//                             return const SizedBox.shrink();
+//                           }
+
+//                           return _buildMenuItem(
+//                             dishName,
+//                             description,
+//                             price,
+//                             image,
+//                           );
+//                         },
+//                       ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildFilterChip(String label, bool isSelected) {
+//     return Container(
+//       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+//       decoration: BoxDecoration(
+//         color: isSelected ? const Color(0xFFE53935) : Colors.white,
+//         borderRadius: BorderRadius.circular(20),
+//         border: Border.all(
+//           color: isSelected ? const Color(0xFFE53935) : const Color(0xFFE0E0E0),
+//         ),
+//       ),
+//       child: Text(
+//         label,
+//         style: TextStyle(
+//           color: isSelected ? Colors.white : const Color(0xFF757575),
+//           fontSize: 14,
+//           fontWeight: FontWeight.w500,
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget _buildMenuItem(String name, String description, String price, String? imageUrl) {
+//     return GestureDetector(
+//       onTap: () {},
+//       child: Container(
+//         margin: const EdgeInsets.only(bottom: 16),
+//         padding: const EdgeInsets.all(12),
+//         decoration: BoxDecoration(
+//           color: Colors.white,
+//           borderRadius: BorderRadius.circular(12),
+//           border: Border.all(color: const Color(0xFFE0E0E0)),
+//           boxShadow: [
+//             BoxShadow(
+//               color: Colors.black.withOpacity(0.03),
+//               blurRadius: 8,
+//               offset: const Offset(0, 2),
+//             ),
+//           ],
+//         ),
+//         child: Row(
+//           children: [
+//             // 🖼 Food Image
+//             Container(
+//               width: 80,
+//               height: 80,
+//               decoration: BoxDecoration(
+//                 color: const Color(0xFFF5F5F5),
+//                 borderRadius: BorderRadius.circular(8),
+//                 image: imageUrl != null && imageUrl.isNotEmpty
+//                     ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover)
+//                     : null,
+//               ),
+//               child: imageUrl == null || imageUrl.isEmpty
+//                   ? const Center(
+//                       child: Icon(Icons.restaurant, size: 40, color: Color(0xFFE0E0E0)),
+//                     )
+//                   : null,
+//             ),
+//             const SizedBox(width: 12),
+
+//             // 🍴 Details
+//             Expanded(
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+//                   const SizedBox(height: 4),
+//                   Text(
+//                     description,
+//                     style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+//                     maxLines: 1,
+//                     overflow: TextOverflow.ellipsis,
+//                   ),
+//                   const SizedBox(height: 8),
+//                   Text(price,
+//                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
+//                 ],
+//               ),
+//             ),
+
+//             // ➕ Add button
+//             GestureDetector(
+//               onTap: () {
+//                 ScaffoldMessenger.of(context).showSnackBar(
+//                   SnackBar(
+//                     content: Text('$name added to cart'),
+//                     duration: const Duration(seconds: 1),
+//                     backgroundColor: const Color(0xFF4CAF50),
+//                   ),
+//                 );
+//               },
+//               child: Container(
+//                 width: 36,
+//                 height: 36,
+//                 decoration: const BoxDecoration(color: Color(0xFFE53935), shape: BoxShape.circle),
+//                 child: const Icon(Icons.add, color: Colors.white, size: 20),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
+
+
+
+//import 'package:flutter/material.dart';
+// import 'package:zenzio_customer/data/models/food_model.dart';
+// import 'package:zenzio_customer/services/restaurant_service.dart';
+// import 'package:zenzio_customer/services/cart_service.dart';
+// import 'package:zenzio_customer/data/models/cart_model.dart';
+
+// class MenuScreen extends StatefulWidget {
+//   final String restaurantId;
+
+//   const MenuScreen({super.key, required this.restaurantId});
+
+//   @override
+//   State<MenuScreen> createState() => _MenuScreenState();
+// }
+
+// class _MenuScreenState extends State<MenuScreen> with TickerProviderStateMixin {
+//   late TabController _tabController;
+//   final RestaurantService _restaurantService = RestaurantService();
+
+//   List<Food> _foods = [];
+//   Map<String, List<Food>> _groupedFoods = {};
+//   List<String> _categories = [];
+//   bool _isLoading = true;
+//   bool _hasError = false;
+//   String? _errorMessage;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _tabController = TabController(length: 1, vsync: this);
+//     WidgetsBinding.instance.addPostFrameCallback((_) {
+//       if (mounted) _fetchMenuItems();
+//     });
+//   }
+
+//   Future<void> _fetchMenuItems() async {
+//     setState(() {
+//       _isLoading = true;
+//       _hasError = false;
+//     });
+
+//     try {
+//       final grouped = await _restaurantService
+//           .fetchRestaurantFoodsWithCategories(widget.restaurantId);
+
+//       final categories = grouped.keys.toList();
+//       final allFoods = grouped.values.expand((list) => list).toList();
+
+//       _tabController.dispose();
+//       _tabController = TabController(
+//         length: categories.isNotEmpty ? categories.length : 1,
+//         vsync: this,
+//       );
+
+//       if (!mounted) return;
+//       setState(() {
+//         _foods = allFoods;
+//         _groupedFoods = grouped;
+//         _categories = categories;
+//         _isLoading = false;
+//       });
+//     } catch (e) {
+//       if (!mounted) return;
+//       setState(() {
+//         _hasError = true;
+//         _isLoading = false;
+//         _errorMessage = e.toString();
+//       });
+//     }
+//   }
+
+//   @override
+//   void dispose() {
+//     _tabController.dispose();
+//     super.dispose();
+//   }
+
+//   String _getImageUrl(String? path) {
+//     if (path == null || path.isEmpty) return '';
+//     if (path.startsWith('http')) return path;
+//     String cleanPath = path.replaceFirst("/root/choozy-backend", "");
+//     return 'https://backend.zenzio.in$cleanPath';
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.white,
+//       appBar: AppBar(
+//         title: const Text('Menu'),
+//         backgroundColor: const Color(0xFFE53935),
+//       ),
+//       body: _isLoading
+//           ? const Center(
+//               child: CircularProgressIndicator(
+//                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE53935)),
+//               ),
+//             )
+//           : _hasError
+//               ? Center(
+//                   child: Padding(
+//                     padding: const EdgeInsets.all(32),
+//                     child: Column(
+//                       children: [
+//                         const Icon(Icons.error_outline,
+//                             size: 64, color: Colors.red),
+//                         const SizedBox(height: 16),
+//                         const Text(
+//                           'Failed to load menu',
+//                           style: TextStyle(
+//                               fontSize: 18, fontWeight: FontWeight.w600),
+//                         ),
+//                         if (_errorMessage != null)
+//                           Padding(
+//                             padding: const EdgeInsets.only(top: 8),
+//                             child: Text(
+//                               _errorMessage!,
+//                               style: const TextStyle(color: Colors.grey),
+//                               textAlign: TextAlign.center,
+//                             ),
+//                           ),
+//                         const SizedBox(height: 16),
+//                         ElevatedButton.icon(
+//                           onPressed: _fetchMenuItems,
+//                           icon: const Icon(Icons.refresh),
+//                           label: const Text('Retry'),
+//                           style: ElevatedButton.styleFrom(
+//                             backgroundColor: const Color(0xFFE53935),
+//                             foregroundColor: Colors.white,
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                 )
+//               : _categories.isEmpty
+//                   ? const Center(
+//                       child: Text('No menu items available'),
+//                     )
+//                   : Column(
+//                       children: [
+//                         Container(
+//                           color: const Color(0xFFF5F5F5),
+//                           child: TabBar(
+//                             controller: _tabController,
+//                             isScrollable: true,
+//                             labelColor: const Color(0xFFE53935),
+//                             unselectedLabelColor: Colors.grey,
+//                             indicatorColor: const Color(0xFFE53935),
+//                             tabs:
+//                                 _categories.map((cat) => Tab(text: cat)).toList(),
+//                           ),
+//                         ),
+//                         Expanded(
+//                           child: TabBarView(
+//                             controller: _tabController,
+//                             children: _categories
+//                                 .map((cat) => _buildCategoryMenu(cat))
+//                                 .toList(),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//       floatingActionButton: FloatingActionButton(
+//         backgroundColor: const Color(0xFFE53935),
+//         child: const Icon(Icons.shopping_cart),
+//         onPressed: () => Navigator.pushNamed(context, '/cart-rest'),
+//       ),
+//     );
+//   }
+
+//   Widget _buildCategoryMenu(String category) {
+//     final foods = _groupedFoods[category] ?? [];
+//     if (foods.isEmpty) {
+//       return const Center(
+//         child: Padding(
+//           padding: EdgeInsets.all(32),
+//           child: Text('No items in this category'),
+//         ),
+//       );
+//     }
+
+//     return ListView(
+//       padding: const EdgeInsets.all(16),
+//       children: [
+//         Text(
+//           category,
+//           style: const TextStyle(
+//             fontSize: 18,
+//             fontWeight: FontWeight.w600,
+//             color: Color(0xFF2D2D2D),
+//           ),
+//         ),
+//         const SizedBox(height: 12),
+//         ...foods.map(_buildMenuItem).toList(),
+//       ],
+//     );
+//   }
+
+//   Widget _buildMenuItem(Food food) {
+//     final imageUrl = _getImageUrl(food.image);
+//     return Container(
+//       margin: const EdgeInsets.only(bottom: 12),
+//       padding: const EdgeInsets.all(12),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(12),
+//         border: Border.all(color: const Color(0xFFE0E0E0)),
+//       ),
+//       child: Row(
+//         children: [
+//           Container(
+//             width: 60,
+//             height: 60,
+//             decoration: BoxDecoration(
+//               color: const Color(0xFFF5F5F5),
+//               borderRadius: BorderRadius.circular(8),
+//             ),
+//             child: imageUrl.isNotEmpty
+//                 ? ClipRRect(
+//                     borderRadius: BorderRadius.circular(8),
+//                     child: Image.network(
+//                       imageUrl,
+//                       fit: BoxFit.cover,
+//                       errorBuilder: (_, __, ___) =>
+//                           const Icon(Icons.restaurant_menu, color: Colors.grey),
+//                     ),
+//                   )
+//                 : const Icon(Icons.restaurant_menu, color: Colors.grey),
+//           ),
+//           const SizedBox(width: 12),
+//           Expanded(
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Row(
+//                   children: [
+//                     Container(
+//                       width: 16,
+//                       height: 16,
+//                       decoration: BoxDecoration(
+//                         border: Border.all(
+//                           color: food.veg ? Colors.green : Colors.red,
+//                           width: 1.5,
+//                         ),
+//                       ),
+//                       child: Center(
+//                         child: Container(
+//                           width: 8,
+//                           height: 8,
+//                           decoration: BoxDecoration(
+//                             color: food.veg ? Colors.green : Colors.red,
+//                             shape: BoxShape.circle,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 8),
+//                     Expanded(
+//                       child: Text(
+//                         food.foodName,
+//                         style: const TextStyle(
+//                           fontSize: 16,
+//                           fontWeight: FontWeight.w600,
+//                         ),
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//                 if (food.description?.isNotEmpty ?? false)
+//                   Padding(
+//                     padding: const EdgeInsets.only(top: 4),
+//                     child: Text(
+//                       food.description!,
+//                       maxLines: 2,
+//                       overflow: TextOverflow.ellipsis,
+//                       style: const TextStyle(fontSize: 13, color: Colors.grey),
+//                     ),
+//                   ),
+//               ],
+//             ),
+//           ),
+//           Column(
+//             children: [
+//               Text(
+//                 '₹${food.price.toStringAsFixed(0)}',
+//                 style: const TextStyle(
+//                   fontSize: 16,
+//                   fontWeight: FontWeight.w600,
+//                 ),
+//               ),
+//               const SizedBox(height: 8),
+//               GestureDetector(
+//                 onTap: () => _showAddItemSheet(food),
+//                 child: Container(
+//                   padding: const EdgeInsets.all(8),
+//                   decoration: const BoxDecoration(
+//                     color: Color(0xFFE53935),
+//                     shape: BoxShape.circle,
+//                   ),
+//                   child: const Icon(Icons.add, color: Colors.white, size: 20),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   void _showAddItemSheet(Food food) {
+//     showModalBottomSheet(
+//       context: context,
+//       isScrollControlled: true,
+//       shape: const RoundedRectangleBorder(
+//         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+//       ),
+//       builder: (context) => Padding(
+//         padding: EdgeInsets.only(
+//           bottom: MediaQuery.of(context).viewInsets.bottom,
+//         ),
+//         child: AddItemSheet(food: food),
+//       ),
+//     );
+//   }
+// }
+
+// /// ✅ Reuses your existing AddItemSheet exactly the same way
+// class AddItemSheet extends StatefulWidget {
+//   final Food food;
+//   const AddItemSheet({super.key, required this.food});
+
+//   @override
+//   State<AddItemSheet> createState() => _AddItemSheetState();
+// }
+
+// class _AddItemSheetState extends State<AddItemSheet> {
+//   int _quantity = 1;
+//   String _size = 'Medium';
+//   String _spice = 'Medium';
+
+//   double get _total {
+//     double base = widget.food.price;
+//     double extra = _size == 'Large'
+//         ? 40
+//         : _size == 'Small'
+//             ? -50
+//             : 0;
+//     return (base + extra) * _quantity;
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return SingleChildScrollView(
+//       padding: const EdgeInsets.all(24),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           Row(
+//             children: [
+//               Text(
+//                 widget.food.foodName,
+//                 style: const TextStyle(
+//                   fontSize: 20,
+//                   fontWeight: FontWeight.w600,
+//                 ),
+//               ),
+//               const Spacer(),
+//               Text(
+//                 '₹${widget.food.price.toStringAsFixed(0)}',
+//                 style: const TextStyle(
+//                   fontSize: 18,
+//                   color: Color(0xFFE53935),
+//                   fontWeight: FontWeight.w600,
+//                 ),
+//               ),
+//               IconButton(
+//                 icon: const Icon(Icons.close),
+//                 onPressed: () => Navigator.pop(context),
+//               ),
+//             ],
+//           ),
+//           const SizedBox(height: 16),
+//           Row(
+//             children: [
+//               const Text('Quantity'),
+//               const Spacer(),
+//               IconButton(
+//                 icon: const Icon(Icons.remove_circle_outline,
+//                     color: Color(0xFFE53935)),
+//                 onPressed: () {
+//                   if (_quantity > 1) setState(() => _quantity--);
+//                 },
+//               ),
+//               Text('$_quantity'),
+//               IconButton(
+//                 icon:
+//                     const Icon(Icons.add_circle, color: Color(0xFFE53935)),
+//                 onPressed: () => setState(() => _quantity++),
+//               ),
+//             ],
+//           ),
+//           const SizedBox(height: 16),
+//           const Text('Choose Size'),
+//           _buildSizeOption('Small', '-₹50'),
+//           _buildSizeOption('Medium', '₹0'),
+//           _buildSizeOption('Large', '+₹40'),
+//           const SizedBox(height: 16),
+//           const Text('Choose Spice'),
+//           _buildSpiceOption('Mild'),
+//           _buildSpiceOption('Medium'),
+//           _buildSpiceOption('Hot'),
+//           const SizedBox(height: 24),
+//           ElevatedButton(
+//             style: ElevatedButton.styleFrom(
+//               backgroundColor: const Color(0xFFE53935),
+//               foregroundColor: Colors.white,
+//               minimumSize: const Size(double.infinity, 56),
+//             ),
+//             onPressed: () async {
+//               try {
+//                 final cartService = CartService();
+//                 final item = CartItem(
+//                   foodId: widget.food.id,
+//                   quantity: _quantity,
+//                   selectedAddOns: [
+//                     if (_size == 'Large') AddOn(name: 'Large Size', price: 40),
+//                     if (_size == 'Small')
+//                       AddOn(name: 'Small Size', price: -50),
+//                     AddOn(name: 'Spice: $_spice', price: 0),
+//                   ],
+//                 );
+
+//                 final success = await cartService.addToCart(item);
+//                 if (!mounted) return;
+//                 Navigator.pop(context);
+//                 ScaffoldMessenger.of(context).showSnackBar(
+//                   SnackBar(
+//                     content: Text(success
+//                         ? '${widget.food.foodName} added to cart successfully'
+//                         : 'Failed to add item to cart'),
+//                     backgroundColor: success ? Colors.green : Colors.red,
+//                   ),
+//                 );
+//               } catch (e) {
+//                 if (!mounted) return;
+//                 Navigator.pop(context);
+//                 ScaffoldMessenger.of(context).showSnackBar(
+//                   SnackBar(
+//                     content: Text('Error: $e'),
+//                     backgroundColor: Colors.red,
+//                   ),
+//                 );
+//               }
+//             },
+//             child: Text(
+//               'Add to Cart - ₹${_total.toStringAsFixed(0)}',
+//               style:
+//                   const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildSizeOption(String size, String price) => GestureDetector(
+//         onTap: () => setState(() => _size = size),
+//         child: Container(
+//           margin: const EdgeInsets.only(bottom: 8),
+//           padding: const EdgeInsets.all(12),
+//           decoration: BoxDecoration(
+//             border: Border.all(
+//               color: _size == size
+//                   ? const Color(0xFFE53935)
+//                   : const Color(0xFFE0E0E0),
+//             ),
+//             borderRadius: BorderRadius.circular(10),
+//           ),
+//           child: Row(
+//             children: [
+//               Icon(
+//                 _size == size
+//                     ? Icons.radio_button_checked
+//                     : Icons.radio_button_unchecked,
+//                 color: _size == size ? const Color(0xFFE53935) : Colors.grey,
+//               ),
+//               const SizedBox(width: 8),
+//               Text(size),
+//               const Spacer(),
+//               Text(price),
+//             ],
+//           ),
+//         ),
+//       );
+
+//   Widget _buildSpiceOption(String spice) => GestureDetector(
+//         onTap: () => setState(() => _spice = spice),
+//         child: Container(
+//           margin: const EdgeInsets.only(bottom: 8),
+//           padding: const EdgeInsets.all(12),
+//           decoration: BoxDecoration(
+//             border: Border.all(
+//               color: _spice == spice
+//                   ? const Color(0xFFE53935)
+//                   : const Color(0xFFE0E0E0),
+//             ),
+//             borderRadius: BorderRadius.circular(10),
+//           ),
+//           child: Row(
+//             children: [
+//               Icon(
+//                 _spice == spice
+//                     ? Icons.radio_button_checked
+//                     : Icons.radio_button_unchecked,
+//                 color: _spice == spice ? const Color(0xFFE53935) : Colors.grey,
+//               ),
+//               const SizedBox(width: 8),
+//               Text(spice),
+//             ],
+//           ),
+//         ),
+//       );
+// }
 
 
 

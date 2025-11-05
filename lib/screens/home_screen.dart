@@ -594,7 +594,7 @@ class _HomeScreenState extends State<HomeScreen> {
           MaterialPageRoute(
             builder: (context) => RestaurantDetailScreen(
               restaurantId: restaurantId,
-              restaurant: restaurant,
+              // restaurant: restaurant,
             ),
           ),
         );
