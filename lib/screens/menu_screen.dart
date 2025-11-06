@@ -395,6 +395,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
               onPressed: _addToCart,
               style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE53935),
+                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10))),
               child: Text('Add to Cart - ₹${_total.toStringAsFixed(0)}',

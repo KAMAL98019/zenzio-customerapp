@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zenzio_customer/screens/booking_confirmation_screen.dart';
 
 class BookingFormScreen extends StatefulWidget {
   const BookingFormScreen({super.key});
@@ -17,21 +18,24 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   bool isError = false;
 
   int _guestCount = 4;
-  String _selectedTime = '5:30 PM';
+  String _selectedTime = '';
   String _selectedPurpose = 'casual';
   String? _seatPreference;
   final TextEditingController _specialRequestsController = TextEditingController();
 
+  List<String> _availableTimes = [];
+
   @override
   void initState() {
     super.initState();
-    _loadUserData(); // ✅ Load user data first
+    _loadUserData(); // Load user data from SharedPreferences
   }
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-      final userData = prefs.getString('user_data');
+    final userData = prefs.getString('user_data');
     if (userData != null) {
+      if (!mounted) return;
       setState(() {
         user = json.decode(userData);
       });
@@ -50,35 +54,61 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final restaurantId = ModalRoute.of(context)!.settings.arguments as String;
-    _fetchData(restaurantId);
+    final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    final restaurantId = args['restaurantId'] as String;
+    final eventId = args['eventId'] as String?;
+    final times = (args['eventTimes'] as List<dynamic>? ?? []).map((e) => e.toString()).toList();
+
+    _availableTimes = _formatTimes(times);
+
+    if (_availableTimes.isNotEmpty) {
+      _selectedTime = _availableTimes.first;
+    }
+
+    _fetchData(restaurantId, eventId);
   }
 
-  Future<void> _fetchData(String restaurantId) async {
+  List<String> _formatTimes(List<String> times) {
+    List<String> formatted = [];
+    for (var t in times) {
+      try {
+        if (t.contains('AM') || t.contains('PM')) {
+          formatted.add(t);
+          continue;
+        }
+        final parts = t.split(':');
+        if (parts.length >= 2) {
+          int hour = int.parse(parts[0]);
+          int minute = int.parse(parts[1]);
+          String suffix = hour >= 12 ? 'PM' : 'AM';
+          int displayHour = hour % 12;
+          if (displayHour == 0) displayHour = 12;
+          formatted.add('$displayHour:${minute.toString().padLeft(2, '0')} $suffix');
+        }
+      } catch (_) {}
+    }
+    return formatted;
+  }
+
+  Future<void> _fetchData(String restaurantId, String? eventId) async {
     try {
       await fetchRestaurant(restaurantId);
-
-      // ✅ Ensure user is loaded from SharedPreferences if not already
-      if (user == null) {
-        final prefs = await SharedPreferences.getInstance();
-        final userData = prefs.getString('user');
-        if (userData != null) {
-          user = json.decode(userData);
-        }
+      if (!mounted) return;
+      if (eventId != null) {
+        restaurant!['eventId'] = eventId;
       }
-
       setState(() {
         isLoading = false;
       });
-
       print("✅ User loaded: $user");
       print("✅ Restaurant loaded: $restaurant");
     } catch (e) {
-      print("⚠️ Error fetching data: $e");
+      if (!mounted) return;
       setState(() {
         isError = true;
         isLoading = false;
       });
+      print("⚠️ Error fetching data: $e");
     }
   }
 
@@ -86,7 +116,6 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     final response = await http.get(
       Uri.parse('https://backend.zenzio.in/api/customer/restaurants/$id'),
     );
-
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       if (data['success'] == true) {
@@ -99,63 +128,77 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     }
   }
 
-  Future<void> submitBooking() async {
-    print('🚀 Booking button pressed');
-    print("Restaurant data: $restaurant");
-    print("User data: $user");
-
-    if (restaurant == null || user == null) {
-      print('❌ Missing restaurant or user info');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User or restaurant data missing")),
-      );
-      return;
-    }
-
-    final bookingData = {
-      "userId": user!['id'],
-      "restaurantId": restaurant!['id'],
-      "eventId": restaurant!['eventId'] ?? "",
-      "bookingDate": DateTime.now().toIso8601String().split('T')[0],
-      "bookingTime": _selectedTime.replaceAll(' ', ''),
-      "numberOfGuests": _guestCount,
-      "specialRequests": _specialRequestsController.text,
-      "purpose": _selectedPurpose,
-    };
-
-    print('📦 Booking Data: $bookingData');
-
+  String _convertTo24Hour(String time) {
     try {
-      final response = await http.post(
-        Uri.parse('https://backend.zenzio.in/api/customer/bookings'),
-        headers: {"Content-Type": "application/json"},
-        body: json.encode(bookingData),
-      );
+      final t = time.toUpperCase().trim();
+      final parts = t.split(RegExp(r'[: ]')); // splits [hour, minute, AM/PM]
+      int hour = int.parse(parts[0]);
+      int minute = int.parse(parts[1]);
+      String ampm = parts[2];
 
-      print('🌐 Status code: ${response.statusCode}');
-      print('🧾 Response body: ${response.body}');
+      if (ampm == 'PM' && hour != 12) hour += 12;
+      if (ampm == 'AM' && hour == 12) hour = 0;
 
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        print('✅ Booking success');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Booking confirmed successfully")),
-        );
-        Navigator.pushNamed(context, '/booking-confirmation');
-      } else {
-        print('❌ Booking failed: ${data['message']}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(data['message'] ?? "Booking failed")),
-        );
-      }
-    } catch (e) {
-      print('⚠️ Network error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Network error, please try again")),
-      );
+      return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return time;
     }
   }
+  
+Future<void> submitBooking() async {
+  if (restaurant == null || user == null) return;
+
+  final bookingData = {
+    "userId": user!['id'],
+    "restaurantId": restaurant!['id'],
+    "eventId": restaurant!['eventId'] ?? "",
+    "bookingDate": DateTime.now().toIso8601String().split('T')[0],
+    "bookingTime": _convertTo24Hour(_selectedTime),
+    "numberOfGuests": _guestCount,
+    "specialRequests": _specialRequestsController.text,
+    "purpose": _selectedPurpose,
+  };
+
+  try {
+    final response = await http.post(
+      Uri.parse('https://backend.zenzio.in/api/customer/bookings'),
+      headers: {"Content-Type": "application/json"},
+      body: json.encode(bookingData),
+    );
+
+    final data = json.decode(response.body);
+    print("✅ Booking response: ${response.statusCode} - $data");
+
+   if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => BookingConfirmationScreen(),
+        settings: RouteSettings(
+          arguments: {
+            'restaurantName': restaurant!['rest_name'],
+            'bookingDate': bookingData['bookingDate'],
+            'bookingTime': bookingData['bookingTime'],
+            'guestCount': bookingData['numberOfGuests'],
+          },
+        ),
+      ),
+    );
+  });
+} else {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(data['message'] ?? "Booking failed")),
+  );
+}
+
+  } catch (e) {
+    print("❌ Booking error: $e");
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Network error, please try again")),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -201,7 +244,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Restaurant Card
+            // --- Restaurant Card ---
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -268,7 +311,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
             const SizedBox(height: 24),
 
-            // Time selection
+            // --- Time Selection ---
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -314,14 +357,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: [
-                      _buildTimeChip('5:30 PM'),
-                      _buildTimeChip('6:00 PM'),
-                      _buildTimeChip('6:30 PM'),
-                      _buildTimeChip('7:00 PM'),
-                      _buildTimeChip('7:30 PM'),
-                      _buildTimeChip('8:00 PM'),
-                    ],
+                    children: _availableTimes.map((t) => _buildTimeChip(t)).toList(),
                   ),
                 ],
               ),
@@ -329,6 +365,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 
             const SizedBox(height: 24),
 
+            // --- Number of Guests ---
             const Text(
               'Number of Guests',
               style: TextStyle(
@@ -372,6 +409,8 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
             ),
 
             const SizedBox(height: 24),
+
+            // --- Purpose selection ---
             const Text(
               'Purpose of Booking',
               style: TextStyle(
@@ -388,6 +427,8 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
             _buildPurposeOption('other', 'Other'),
 
             const SizedBox(height: 24),
+
+            // --- Seat preference ---
             const Text(
               'Seat/Hall Preference (Optional)',
               style: TextStyle(
@@ -416,6 +457,8 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
             ),
 
             const SizedBox(height: 24),
+
+            // --- Special Requests ---
             const Text(
               'Special Requests',
               style: TextStyle(
@@ -437,6 +480,8 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
             ),
 
             const SizedBox(height: 24),
+
+            // --- Contact Info ---
             const Text(
               'Contact Information',
               style: TextStyle(
@@ -477,16 +522,6 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
         child: SizedBox(
           height: 56,
           child: ElevatedButton(
@@ -543,9 +578,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           border: Border.all(
-            color: _selectedPurpose == value
-                ? const Color(0xFFE53935)
-                : const Color(0xFFE0E0E0),
+            color: _selectedPurpose == value ? const Color(0xFFE53935) : const Color(0xFFE0E0E0),
           ),
           borderRadius: BorderRadius.circular(10),
         ),
@@ -555,9 +588,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
               _selectedPurpose == value
                   ? Icons.radio_button_checked
                   : Icons.radio_button_unchecked,
-              color: _selectedPurpose == value
-                  ? const Color(0xFFE53935)
-                  : const Color(0xFF9E9E9E),
+              color: _selectedPurpose == value ? const Color(0xFFE53935) : const Color(0xFF9E9E9E),
             ),
             const SizedBox(width: 12),
             Text(
@@ -573,6 +604,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
     );
   }
 }
+
 
 
 

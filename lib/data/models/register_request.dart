@@ -1,5 +1,3 @@
-
-
 class RegisterRequest {
   final String name;
   final String email;

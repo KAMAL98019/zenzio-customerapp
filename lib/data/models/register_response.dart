@@ -1,6 +1,5 @@
 import 'user_model.dart';
 
-
 class RegisterResponse {
   final String? token;
   final String? refreshToken;

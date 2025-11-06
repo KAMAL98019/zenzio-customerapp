@@ -1,4 +1,3 @@
-// lib/data/models/food_model.dart
 class Food {
   final String id;
   final String restId;
