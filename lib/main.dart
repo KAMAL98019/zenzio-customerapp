@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 import 'screens/login_screen.dart';
 import 'screens/otp_verify_screen.dart';
@@ -14,7 +12,6 @@ import 'screens/menu_screen.dart';
 import 'screens/restaurant_detail_screen.dart';
 import 'screens/cart_screen.dart';
 import 'screens/cart_rest_screen.dart'; // ✅ NEW: Import the restaurant cart screen
-import 'screens/checkout_screen.dart';
 import 'screens/order_tracking_screen.dart';
 import 'screens/my_orders_screen.dart';
 import 'screens/order_details_screen.dart';

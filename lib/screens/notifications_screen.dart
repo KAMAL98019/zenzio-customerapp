@@ -132,7 +132,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   notification['message'],
                   notification['time'],
                 );
-              }).toList(),
+              }),
             ],
           );
         },

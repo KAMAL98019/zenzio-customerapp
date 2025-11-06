@@ -1980,7 +1980,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen>
           ),
         ),
         const SizedBox(height: 12),
-        ...foods.map(_buildMenuItem).toList(),
+        ...foods.map(_buildMenuItem),
       ],
     );
   }

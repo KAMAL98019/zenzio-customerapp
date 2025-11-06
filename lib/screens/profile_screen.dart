@@ -253,7 +253,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/user_model.dart';
-import '../services/auth_service.dart'; // ✅ Make sure this path is correct
+// ✅ Make sure this path is correct
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

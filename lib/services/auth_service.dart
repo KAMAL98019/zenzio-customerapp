@@ -147,8 +147,9 @@ class AuthService {
 
       final fields = {'name': name, 'email': email};
 
-      if (password != null && password.isNotEmpty)
+      if (password != null && password.isNotEmpty) {
         fields['password'] = password;
+      }
       if (birthday != null) fields['birthday'] = birthday;
       if (anniversary != null) fields['anniversary'] = anniversary;
 

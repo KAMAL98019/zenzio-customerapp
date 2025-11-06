@@ -203,8 +203,9 @@ class _BookingsHomeScreenState extends State<BookingsHomeScreen> {
                             const SizedBox(width: 8),
                             IconButton(
                               onPressed: () {
-                                if (_guestCount > 1)
+                                if (_guestCount > 1) {
                                   setState(() => _guestCount--);
+                                }
                               },
                               icon: const Icon(Icons.remove, size: 18),
                             ),

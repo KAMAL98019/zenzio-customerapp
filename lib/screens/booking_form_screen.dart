@@ -281,7 +281,7 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
                   Row(
                     children: [
                       Text(
-                        '${DateTime.now().toLocal().toString().split(" ")[0]}',
+                        DateTime.now().toLocal().toString().split(" ")[0],
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,

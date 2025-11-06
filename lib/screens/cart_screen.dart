@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../screens/restaurant_detail_screen.dart';
 import 'checkout_screen.dart';
-import '../services/restaurant_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});

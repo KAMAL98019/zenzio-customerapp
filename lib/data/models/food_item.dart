@@ -39,4 +39,6 @@ class FoodItem {
       cuisine: json['cuisine']?['name'],
     );
   }
+
+  get dishname => null;
 }
