@@ -1489,9 +1489,9 @@
 import 'package:flutter/material.dart';
 import 'package:zenzio_customer/data/models/cart_model.dart';
 import 'package:zenzio_customer/services/cart_service.dart';
-import '../services/restaurant_service.dart';
-import '../data/models/food_model.dart';
-import '../data/models/restaurant_model.dart';
+import '../../services/restaurant_service.dart';
+import '../../data/models/food_model.dart';
+import '../../data/models/restaurant_model.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
   final String restaurantId;

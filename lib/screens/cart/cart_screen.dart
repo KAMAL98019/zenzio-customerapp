@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../screens/restaurant_detail_screen.dart';
-import 'checkout_screen.dart';
+import '../home/restaurant_detail_screen.dart';
+import '../myOrder/checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});

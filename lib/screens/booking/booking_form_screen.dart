@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zenzio_customer/screens/booking_confirmation_screen.dart';
+import 'package:zenzio_customer/screens/booking/booking_confirmation_screen.dart';
 
 class BookingFormScreen extends StatefulWidget {
   const BookingFormScreen({super.key});

@@ -330,7 +330,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'restaurant_detail_screen.dart';
-import '../config/api_config.dart';
+import '../../config/api_config.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

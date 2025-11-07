@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 
 // ✅ ADD THESE IMPORTS
-import '../services/auth_service.dart';
-import '../services/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});

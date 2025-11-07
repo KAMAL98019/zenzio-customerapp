@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../data/models/food_item.dart';
-import '../data/models/cart_model.dart';
-import '../services/cart_service.dart';
+import '../../data/models/food_item.dart';
+import '../../data/models/cart_model.dart';
+import '../../services/cart_service.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});

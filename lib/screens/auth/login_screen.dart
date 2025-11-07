@@ -1,11 +1,11 @@
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import '../widgets/logo_widget.dart';
+import '../../widgets/logo_widget.dart';
 
 // ✅ ADD THESE IMPORTS
-import '../services/auth_service.dart';
-import '../services/api_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 
 
 class LoginScreen extends StatefulWidget {
