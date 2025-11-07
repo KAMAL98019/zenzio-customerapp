@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-
-// ✅ ADD THESE IMPORTS
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
+import '../../core/constants/app_colors.dart';
+import '../../widgets/custom_button.dart'; 
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -18,12 +18,11 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _mobileController = TextEditingController();
   final TextEditingController _birthdayController = TextEditingController();
+
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
   String _selectedGender = 'Male';
   String _selectedCountryCode = '+1';
-  
-  // ✅ ADD THESE NEW VARIABLES
   final AuthService _authService = AuthService();
   bool _isLoading = false;
 
@@ -62,35 +61,28 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // ✅ ADD THIS METHOD - Handle Signup
   Future<void> _handleSignup() async {
-    // Validation
     if (_nameController.text.trim().isEmpty) {
       _showErrorDialog('Please enter your full name');
       return;
     }
-
     if (_emailController.text.trim().isEmpty) {
       _showErrorDialog('Please enter your email');
       return;
     }
-
     if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
         .hasMatch(_emailController.text.trim())) {
       _showErrorDialog('Please enter a valid email address');
       return;
     }
-
     if (_passwordController.text.isEmpty || _passwordController.text.length < 6) {
       _showErrorDialog('Password must be at least 6 characters');
       return;
     }
-
     if (_mobileController.text.trim().isEmpty) {
       _showErrorDialog('Please enter your mobile number');
       return;
     }
-
     if (!_agreeToTerms) {
       _showErrorDialog('Please agree to Terms & Conditions');
       return;
@@ -116,8 +108,6 @@ class _SignupScreenState extends State<SignupScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        
-        // Navigate to main screen or login
         Navigator.pushReplacementNamed(context, '/');
       }
     } on ApiException catch (e) {
@@ -129,7 +119,6 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // ✅ ADD THIS METHOD - Show Error Dialog
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -168,7 +157,6 @@ class _SignupScreenState extends State<SignupScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        // ✅ WRAP IN STACK FOR LOADING OVERLAY
         child: Stack(
           children: [
             SingleChildScrollView(
@@ -188,9 +176,8 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 32),
                     _buildTextField(
-                      controller: _nameController,
-                      hintText: 'Enter your full name',
-                    ),
+                        controller: _nameController,
+                        hintText: 'Enter your full name'),
                     const SizedBox(height: 16),
                     _buildTextField(
                       controller: _emailController,
@@ -209,11 +196,8 @@ class _SignupScreenState extends State<SignupScreen> {
                               : Icons.visibility,
                           color: const Color(0xFF9E9E9E),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -234,20 +218,14 @@ class _SignupScreenState extends State<SignupScreen> {
                               items: ['+1', '+91', '+44', '+61']
                                   .map((code) => DropdownMenuItem(
                                         value: code,
-                                        child: Text(
-                                          code,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
+                                        child: Text(code,
+                                            style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w500)),
                                       ))
                                   .toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedCountryCode = value!;
-                                });
-                              },
+                              onChanged: (value) =>
+                                  setState(() => _selectedCountryCode = value!),
                             ),
                           ),
                         ),
@@ -267,11 +245,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       hintText: 'Select your birthday',
                       readOnly: true,
                       suffixIcon: IconButton(
-                        icon: const Icon(
-                          Icons.calendar_today,
-                          color: Color(0xFF9E9E9E),
-                          size: 20,
-                        ),
+                        icon: const Icon(Icons.calendar_today,
+                            color: Color(0xFF9E9E9E), size: 20),
                         onPressed: () => _selectDate(context),
                       ),
                       onTap: () => _selectDate(context),
@@ -290,25 +265,18 @@ class _SignupScreenState extends State<SignupScreen> {
                         value: _selectedGender,
                         isExpanded: true,
                         underline: const SizedBox(),
-                        icon: const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Color(0xFF9E9E9E),
-                        ),
+                        icon: const Icon(Icons.keyboard_arrow_down,
+                            color: Color(0xFF9E9E9E)),
                         style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF2D2D2D),
-                        ),
+                            fontSize: 14, color: Color(0xFF2D2D2D)),
                         items: ['Male', 'Female', 'Other', 'Prefer not to say']
                             .map((gender) => DropdownMenuItem(
                                   value: gender,
                                   child: Text(gender),
                                 ))
                             .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedGender = value!;
-                          });
-                        },
+                        onChanged: (value) =>
+                            setState(() => _selectedGender = value!),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -319,11 +287,8 @@ class _SignupScreenState extends State<SignupScreen> {
                           height: 24,
                           child: Checkbox(
                             value: _agreeToTerms,
-                            onChanged: (value) {
-                              setState(() {
-                                _agreeToTerms = value!;
-                              });
-                            },
+                            onChanged: (value) =>
+                                setState(() => _agreeToTerms = value!),
                             activeColor: const Color(0xFFE53935),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(4),
@@ -336,16 +301,13 @@ class _SignupScreenState extends State<SignupScreen> {
                             text: TextSpan(
                               text: 'I agree to the ',
                               style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF757575),
-                              ),
+                                  fontSize: 13, color: Color(0xFF757575)),
                               children: [
                                 TextSpan(
                                   text: 'Terms & Conditions',
                                   style: const TextStyle(
-                                    color: Color(0xFFE53935),
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                      color: Color(0xFFE53935),
+                                      fontWeight: FontWeight.w500),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {},
                                 ),
@@ -353,9 +315,8 @@ class _SignupScreenState extends State<SignupScreen> {
                                 TextSpan(
                                   text: 'Privacy Policy',
                                   style: const TextStyle(
-                                    color: Color(0xFFE53935),
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                      color: Color(0xFFE53935),
+                                      fontWeight: FontWeight.w500),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {},
                                 ),
@@ -366,61 +327,30 @@ class _SignupScreenState extends State<SignupScreen> {
                       ],
                     ),
                     const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        // ✅ CHANGE THIS LINE - Call API method and check loading
-                        onPressed: (_agreeToTerms && !_isLoading) ? _handleSignup : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE53935),
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: const Color(0xFFE0E0E0),
-                          disabledForegroundColor: const Color(0xFF9E9E9E),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        // ✅ ADD LOADING INDICATOR
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : const Text(
-                                'Sign Up',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
+
+                    // ✅ USE CUSTOM BUTTON HERE
+                    CustomButton(
+                      text: 'Sign Up',
+                      onPressed:
+                          (_agreeToTerms && !_isLoading) ? _handleSignup : () {},
+                      isLoading: _isLoading,
                     ),
+
                     const SizedBox(height: 24),
                     Center(
                       child: RichText(
                         text: TextSpan(
                           text: 'Already have an account? ',
                           style: const TextStyle(
-                            color: Color(0xFF757575),
-                            fontSize: 14,
-                          ),
+                              color: Color(0xFF757575), fontSize: 14),
                           children: [
                             TextSpan(
                               text: 'Login',
                               style: const TextStyle(
-                                color: Color(0xFFE53935),
-                                fontWeight: FontWeight.w600,
-                              ),
+                                  color: Color(0xFFE53935),
+                                  fontWeight: FontWeight.w600),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  Navigator.pop(context);
-                                },
+                                ..onTap = () => Navigator.pop(context),
                             ),
                           ],
                         ),
@@ -431,15 +361,15 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
             ),
-            // ✅ ADD LOADING OVERLAY
+
+            // ✅ LOADING OVERLAY
             if (_isLoading)
               Container(
                 color: Colors.black.withOpacity(0.3),
                 child: const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(0xFFE53935),
-                    ),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Color(0xFFE53935)),
                   ),
                 ),
               ),
@@ -463,14 +393,11 @@ class _SignupScreenState extends State<SignupScreen> {
       obscureText: obscureText,
       keyboardType: keyboardType,
       readOnly: readOnly,
-      enabled: !_isLoading, // ✅ DISABLE WHEN LOADING
+      enabled: !_isLoading,
       onTap: onTap,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(
-          color: Color(0xFFBDBDBD),
-          fontSize: 14,
-        ),
+        hintStyle: const TextStyle(color: Color(0xFFBDBDBD), fontSize: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
@@ -483,10 +410,8 @@ class _SignupScreenState extends State<SignupScreen> {
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFE53935)),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 18,
-        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
         filled: true,
         fillColor: Colors.white,
         suffixIcon: suffixIcon,

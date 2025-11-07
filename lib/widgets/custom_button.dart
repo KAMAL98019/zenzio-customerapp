@@ -21,6 +21,7 @@ class CustomButton extends StatelessWidget {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white, // ✅ makes text color white
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -28,7 +29,13 @@ class CustomButton extends StatelessWidget {
         onPressed: isLoading ? null : onPressed,
         child: isLoading
             ? const CircularProgressIndicator(color: Colors.white)
-            : Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+            : Text(
+                text,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white, // ✅ ensures white text explicitly
+                ),
+              ),
       ),
     );
   }

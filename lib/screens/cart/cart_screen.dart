@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../home/restaurant_detail_screen.dart';
-import '../myOrder/checkout_screen.dart';
+import 'package:zenzio_customer/screens/home/restaurant_detail_screen.dart';
+import 'package:zenzio_customer/screens/cart/checkout_screen.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -51,20 +51,21 @@ class _CartScreenState extends State<CartScreen> {
           _cartId = cart['id'] ?? cart['_id'];
           final items = cart['items'] as List;
 
-         final firstItem = cart['items'].isNotEmpty ? cart['items'][0] : null;
-final restaurant = firstItem != null ? firstItem['food']['restaurant'] : null;
+          final firstItem = cart['items'].isNotEmpty ? cart['items'][0] : null;
+          final restaurant = firstItem != null
+              ? firstItem['food']['restaurant']
+              : null;
 
-if (restaurant != null) {
-  _restaurantName = restaurant['rest_name'] ?? 'Unknown Restaurant';
-  _restaurantId = restaurant['_id'] ?? restaurant['id'] ?? '';
-  debugPrint("🍽 Restaurant ID fetched: $_restaurantId");
+          if (restaurant != null) {
+            _restaurantName = restaurant['rest_name'] ?? 'Unknown Restaurant';
+            _restaurantId = restaurant['_id'] ?? restaurant['id'] ?? '';
+            debugPrint("🍽 Restaurant ID fetched: $_restaurantId");
 
-  _restaurantData = restaurant;
-} else {
-  _restaurantName = 'Unknown Restaurant';
-  _restaurantId = '';
-}
-
+            _restaurantData = restaurant;
+          } else {
+            _restaurantName = 'Unknown Restaurant';
+            _restaurantId = '';
+          }
 
           _cartItems = items.map((item) {
             final food = item['food'];
@@ -270,46 +271,52 @@ if (restaurant != null) {
                       const SizedBox(height: 12),
 
                       // ✅ Add More Items Button (with restaurantId)
-                    TextButton.icon(
-  onPressed: () async {
-    debugPrint("🛒 Add More Items Clicked — Restaurant ID: $_restaurantId");
+                      TextButton.icon(
+                        onPressed: () async {
+                          debugPrint(
+                            "🛒 Add More Items Clicked — Restaurant ID: $_restaurantId",
+                          );
 
-    // Check if restaurantId is available
-    if (_restaurantId == null || _restaurantId!.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Restaurant details not available.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
+                          // Check if restaurantId is available
+                          if (_restaurantId == null ||
+                              _restaurantId!.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Restaurant details not available.',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
 
-    // ✅ Navigate and wait until user comes back
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => RestaurantDetailScreen(
-          restaurantId: _restaurantId!,
-        ),
-      ),
-    );
+                          // ✅ Navigate and wait until user comes back
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RestaurantDetailScreen(
+                                restaurantId: _restaurantId!,
+                              ),
+                            ),
+                          );
 
-    // ✅ Reload the cart when returning
-    debugPrint("🔄 Returned from RestaurantDetailScreen — reloading cart...");
-    await _fetchCartData();
-    setState(() {});
-  },
-  icon: const Icon(Icons.add, color: Color(0xFFE53935)),
-  label: const Text(
-    'Add more items',
-    style: TextStyle(
-      color: Color(0xFFE53935),
-      fontWeight: FontWeight.w500,
-    ),
-  ),
-),
-
+                          // ✅ Reload the cart when returning
+                          debugPrint(
+                            "🔄 Returned from RestaurantDetailScreen — reloading cart...",
+                          );
+                          await _fetchCartData();
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.add, color: Color(0xFFE53935)),
+                        label: const Text(
+                          'Add more items',
+                          style: TextStyle(
+                            color: Color(0xFFE53935),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -336,13 +343,15 @@ if (restaurant != null) {
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFE0E0E0)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE0E0E0),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFE53935)),
+                            borderSide: const BorderSide(
+                              color: Color(0xFFE53935),
+                            ),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -465,6 +474,10 @@ if (restaurant != null) {
                                 userId: userId,
                                 cartId: _cartId!,
                                 total: _itemTotal + _deliveryFee + _taxes,
+                                totalAmount:
+                                    _itemTotal +
+                                    _deliveryFee +
+                                    _taxes, // ✅ added
                               ),
                             ),
                           );

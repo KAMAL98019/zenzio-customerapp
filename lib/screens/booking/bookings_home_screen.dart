@@ -37,7 +37,7 @@ class _BookingsHomeScreenState extends State<BookingsHomeScreen> {
           _isLoading = false;
         });
       } else {
-        if (!mounted) return;
+        if (!mounted) return; 
         setState(() {
           _isLoading = false;
           _hasError = true;

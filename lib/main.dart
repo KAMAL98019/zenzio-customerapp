@@ -19,7 +19,7 @@ import 'screens/booking/bookings_home_screen.dart';
 import 'screens/booking/booking_detail_screen.dart';
 import 'screens/booking/booking_form_screen.dart';
 import 'screens/booking/booking_confirmation_screen.dart';
-import 'screens/booking/booking_details_screen.dart';
+import 'screens/myOrder/booking_details_screen.dart';
 
 import 'screens/profile/profile_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
@@ -98,7 +98,6 @@ class ZenzioApp extends StatelessWidget {
         '/booking-detail': (context) => const BookingDetailScreen(),
         '/booking-form': (context) => const BookingFormScreen(),
         '/booking-confirmation': (context) => const BookingConfirmationScreen(),
-        '/booking-details': (context) => const BookingDetailsScreen(),
         
         // Profile Flow
         '/profile': (context) => const ProfileScreen(),
@@ -111,6 +110,19 @@ class ZenzioApp extends StatelessWidget {
         '/settings': (context) => const SettingsScreen(),
         '/chat-assistant': (context) => const ChatAssistantScreen(),
         '/my-coupons': (context) => const MyCouponsScreen(),
+      },
+           onGenerateRoute: (settings) {
+        if (settings.name == '/booking-details') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (context) => BookingDetailsScreen(
+              bookingId: args['bookingId'],
+              userId: args['userId'],
+            ),
+          );
+        }
+
+        return null;
       },
     );
   }

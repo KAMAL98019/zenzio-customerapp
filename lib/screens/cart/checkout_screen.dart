@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'order_tracking_screen.dart';
+import '../myOrder/order_tracking_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final String userId;
@@ -12,7 +12,7 @@ class CheckoutScreen extends StatefulWidget {
     super.key,
     required this.userId,
     required this.cartId,
-    required this.total,
+    required this.total, required double totalAmount,
   });
 
   @override
