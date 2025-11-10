@@ -480,36 +480,83 @@ class _AddItemSheetState extends State<AddItemSheet> {
       );
 
   Future<void> _addToCart() async {
-    try {
-      final cartService = CartService();
-      final item = CartItem(
-        foodId: widget.food.id,
-        quantity: _quantity,
-        selectedAddOns: [
-          if (_size == 'Large') AddOn(name: 'Large Size', price: 40),
-          if (_size == 'Small') AddOn(name: 'Small Size', price: -50),
-          AddOn(name: 'Spice: $_spice', price: 0),
-        ],
+  final cartService = CartService();
+  final item = CartItem(
+    foodId: widget.food.id,
+    quantity: _quantity,
+    selectedAddOns: [
+      if (_size == 'Large') AddOn(name: 'Large Size', price: 40),
+      if (_size == 'Small') AddOn(name: 'Small Size', price: -50),
+      AddOn(name: 'Spice: $_spice', price: 0),
+    ],
+  );
+
+  try {
+    await cartService.addToCart(item);
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${widget.food.name} added to cart successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    // Handle different restaurant
+    if (e.toString().contains('DIFFERENT_RESTAURANT')) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cart Conflict'),
+          content: const Text(
+              'You already have items from another restaurant. Clear your cart and add this item?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context); // Close dialog
+                try {
+                  await cartService.clearCart();
+                  await cartService.addToCart(item);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          '${widget.food.name} added to cart successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                  Navigator.pop(context); // Close AddItemSheet if open
+                } catch (err) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $err'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Clear & Add'),
+            ),
+          ],
+        ),
       );
-      final success = await cartService.addToCart(item);
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(success
-              ? '${widget.food.name} added to cart successfully'
-              : 'Failed to add item to cart'),
-          backgroundColor: success ? Colors.green : Colors.red));
-    } catch (e, st) {
-      debugPrint('❌ Add to cart error: $e\n$st');
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Error: $e'), backgroundColor: Colors.red));
+    } else {
+      // Generic error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 }
-
-
+}
 
 // // lib/screens/menu_screen.dart
 // import 'dart:convert';
@@ -939,275 +986,6 @@ class _AddItemSheetState extends State<AddItemSheet> {
 //     }
 //   }
 // }
-
-
-// import 'dart:convert';
-// import 'package:flutter/material.dart';
-// import 'package:http/http.dart' as http;
-
-// class MenuScreen extends StatefulWidget {
-//   const MenuScreen({super.key});
-
-//   @override
-//   State<MenuScreen> createState() => _MenuScreenState();
-// }
-
-// class _MenuScreenState extends State<MenuScreen> {
-//   String _selectedFilter = 'Meat';
-//   final TextEditingController _searchController = TextEditingController();
-
-//   List<dynamic> _foodItems = [];
-//   bool _isLoading = true;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     fetchFoodItems();
-//   }
-
-//   Future<void> fetchFoodItems() async {
-//     try {
-//       final response = await http.get(
-//         Uri.parse('https://backend.zenzio.in/api/food-items'),
-//       );
-
-//       if (response.statusCode == 200) {
-//         final data = json.decode(response.body);
-//         if (data['success'] == true) {
-//           setState(() {
-//             _foodItems = data['data'];
-//             _isLoading = false;
-//           });
-//         }
-//       } else {
-//         throw Exception('Failed to load food items');
-//       }
-//     } catch (e) {
-//       debugPrint('Error fetching food items: $e');
-//       setState(() {
-//         _isLoading = false;
-//       });
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     _searchController.dispose();
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: Colors.white,
-//       appBar: AppBar(
-//         backgroundColor: Colors.white,
-//         elevation: 0,
-//         leading: IconButton(
-//           icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
-//           onPressed: () => Navigator.pop(context),
-//         ),
-//         title: const Text(
-//           'Order',
-//           style: TextStyle(
-//             color: Color(0xFF2D2D2D),
-//             fontSize: 18,
-//             fontWeight: FontWeight.w600,
-//           ),
-//         ),
-//         centerTitle: true,
-//         actions: [
-//           IconButton(
-//             icon: const Icon(Icons.person, color: Color(0xFFE53935)),
-//             onPressed: () {
-//               Navigator.pushNamed(context, '/profile');
-//             },
-//           ),
-//         ],
-//       ),
-//       body: Column(
-//         children: [
-//           // 🔍 Search Bar
-//           Container(
-//             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//             child: TextField(
-//               controller: _searchController,
-//               decoration: InputDecoration(
-//                 hintText: 'Search for restaurants or dishes',
-//                 prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
-//                 filled: true,
-//                 fillColor: const Color(0xFFF5F5F5),
-//                 border: OutlineInputBorder(
-//                   borderRadius: BorderRadius.circular(10),
-//                   borderSide: BorderSide.none,
-//                 ),
-//               ),
-//               onChanged: (query) {
-//                 setState(() {}); // Rebuild UI for filtered list
-//               },
-//             ),
-//           ),
-
-//           // 🔘 Filter Chips
-//           Padding(
-//             padding: const EdgeInsets.symmetric(horizontal: 16.0),
-//             child: SingleChildScrollView(
-//               scrollDirection: Axis.horizontal,
-//               child: Row(
-//                 children: [
-//                   _buildFilterChip('Cuisine', false),
-//                   const SizedBox(width: 8),
-//                   _buildFilterChip('Meat', true),
-//                   const SizedBox(width: 8),
-//                   _buildFilterChip('Offers', false),
-//                   const SizedBox(width: 8),
-//                   _buildFilterChip('Delivery Time', false),
-//                 ],
-//               ),
-//             ),
-//           ),
-
-//           // 🍗 Food List
-//           Expanded(
-//             child: _isLoading
-//                 ? const Center(child: CircularProgressIndicator(color: Color(0xFFE53935)))
-//                 : _foodItems.isEmpty
-//                     ? const Center(child: Text('No food items found'))
-//                     : ListView.builder(
-//                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//                         itemCount: _foodItems.length,
-//                         itemBuilder: (context, index) {
-//                           final item = _foodItems[index];
-//                           final dishName = item['dishname'] ?? 'Unknown Dish';
-//                           final description = item['description'] ?? '';
-//                           final price = '₹${item['price']}';
-//                           final image = item['dishimage'];
-
-//                           // Apply search filter
-//                           if (_searchController.text.isNotEmpty &&
-//                               !dishName.toLowerCase().contains(_searchController.text.toLowerCase())) {
-//                             return const SizedBox.shrink();
-//                           }
-
-//                           return _buildMenuItem(
-//                             dishName,
-//                             description,
-//                             price,
-//                             image,
-//                           );
-//                         },
-//                       ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildFilterChip(String label, bool isSelected) {
-//     return Container(
-//       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-//       decoration: BoxDecoration(
-//         color: isSelected ? const Color(0xFFE53935) : Colors.white,
-//         borderRadius: BorderRadius.circular(20),
-//         border: Border.all(
-//           color: isSelected ? const Color(0xFFE53935) : const Color(0xFFE0E0E0),
-//         ),
-//       ),
-//       child: Text(
-//         label,
-//         style: TextStyle(
-//           color: isSelected ? Colors.white : const Color(0xFF757575),
-//           fontSize: 14,
-//           fontWeight: FontWeight.w500,
-//         ),
-//       ),
-//     );
-//   }
-
-//   Widget _buildMenuItem(String name, String description, String price, String? imageUrl) {
-//     return GestureDetector(
-//       onTap: () {},
-//       child: Container(
-//         margin: const EdgeInsets.only(bottom: 16),
-//         padding: const EdgeInsets.all(12),
-//         decoration: BoxDecoration(
-//           color: Colors.white,
-//           borderRadius: BorderRadius.circular(12),
-//           border: Border.all(color: const Color(0xFFE0E0E0)),
-//           boxShadow: [
-//             BoxShadow(
-//               color: Colors.black.withOpacity(0.03),
-//               blurRadius: 8,
-//               offset: const Offset(0, 2),
-//             ),
-//           ],
-//         ),
-//         child: Row(
-//           children: [
-//             // 🖼 Food Image
-//             Container(
-//               width: 80,
-//               height: 80,
-//               decoration: BoxDecoration(
-//                 color: const Color(0xFFF5F5F5),
-//                 borderRadius: BorderRadius.circular(8),
-//                 image: imageUrl != null && imageUrl.isNotEmpty
-//                     ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover)
-//                     : null,
-//               ),
-//               child: imageUrl == null || imageUrl.isEmpty
-//                   ? const Center(
-//                       child: Icon(Icons.restaurant, size: 40, color: Color(0xFFE0E0E0)),
-//                     )
-//                   : null,
-//             ),
-//             const SizedBox(width: 12),
-
-//             // 🍴 Details
-//             Expanded(
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-//                   const SizedBox(height: 4),
-//                   Text(
-//                     description,
-//                     style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
-//                     maxLines: 1,
-//                     overflow: TextOverflow.ellipsis,
-//                   ),
-//                   const SizedBox(height: 8),
-//                   Text(price,
-//                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Color(0xFF2D2D2D))),
-//                 ],
-//               ),
-//             ),
-
-//             // ➕ Add button
-//             GestureDetector(
-//               onTap: () {
-//                 ScaffoldMessenger.of(context).showSnackBar(
-//                   SnackBar(
-//                     content: Text('$name added to cart'),
-//                     duration: const Duration(seconds: 1),
-//                     backgroundColor: const Color(0xFF4CAF50),
-//                   ),
-//                 );
-//               },
-//               child: Container(
-//                 width: 36,
-//                 height: 36,
-//                 decoration: const BoxDecoration(color: Color(0xFFE53935), shape: BoxShape.circle),
-//                 child: const Icon(Icons.add, color: Colors.white, size: 20),
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-
 
 
 

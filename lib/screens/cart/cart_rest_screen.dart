@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zenzio_customer/services/token_service.dart';
 
 class CartRestScreen extends StatefulWidget {
   const CartRestScreen({super.key});
@@ -20,63 +21,74 @@ class _CartRestScreenState extends State<CartRestScreen> {
     super.initState();
     _fetchCartData();
   }
+Future<void> _fetchCartData() async {
+  try {
+    // ✅ Get token and userId
+    final tokenService = TokenService();
+    final token = await tokenService.getToken();
+    final userId = await tokenService.getUserId(); // <-- Add this line
 
-  Future<void> _fetchCartData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _userId = prefs.getString('user_id');
+    if (token == null || userId == null) throw Exception('User not logged in');
 
-      if (_userId == null) throw Exception('User ID not found in SharedPreferences');
+    // ✅ Include userId in API call
+    final url = Uri.parse('https://backend.zenzio.in/api/cart/active?userId=$userId');
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
 
-      final url = Uri.parse('https://backend.zenzio.in/api/cart/active?userId=$_userId');
-      final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+      if (data['success'] == true && data['cart'] != null) {
+        final cart = data['cart'];
+        final restaurant = cart['items'][0]['food']['restaurant'];
+        final totalItems = cart['items'].length;
 
-        if (data['success'] == true && data['cart'] != null) {
-          final cart = data['cart'];
-          final restaurant = cart['items'][0]['food']['restaurant'];
-          final totalItems = cart['items'].length;
-
-          double grandTotal = 0;
-          for (var item in cart['items']) {
-            double unitPrice = double.tryParse(item['unitPrice'].toString()) ?? 0;
-            double addOns = 0;
-            for (var addOn in item['selectedAddOns']) {
-              addOns += double.tryParse(addOn['price'].toString()) ?? 0;
-            }
-            grandTotal += (unitPrice + addOns) * (item['quantity'] ?? 1);
+        double grandTotal = 0;
+        for (var item in cart['items']) {
+          double unitPrice = double.tryParse(item['unitPrice'].toString()) ?? 0;
+          double addOns = 0;
+          for (var addOn in item['selectedAddOns']) {
+            addOns += double.tryParse(addOn['price'].toString()) ?? 0;
           }
-
-          setState(() {
-            _restaurantCart = RestaurantCart(
-              restaurantName: restaurant['rest_name'],
-              description: restaurant['rest_address'],
-              totalItems: totalItems,
-              grandTotal: grandTotal,
-              restId: restaurant['id'],
-              isSelected: true,
-            );
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _restaurantCart = null;
-            _isLoading = false;
-          });
+          grandTotal += (unitPrice + addOns) * (item['quantity'] ?? 1);
         }
+
+        if (!mounted) return;
+        setState(() {
+          _restaurantCart = RestaurantCart(
+            restaurantName: restaurant['rest_name'],
+            description: restaurant['rest_address'],
+            totalItems: totalItems,
+            grandTotal: grandTotal,
+            restId: restaurant['id'],
+            isSelected: true,
+          );
+          _isLoading = false;
+        });
       } else {
-        throw Exception('Failed to load cart: ${response.statusCode}');
+        if (!mounted) return;
+        setState(() {
+          _restaurantCart = null;
+          _isLoading = false;
+        });
       }
-    } catch (e) {
-      print('❌ Error fetching cart: $e');
-      setState(() {
-        _isLoading = false;
-        _restaurantCart = null;
-      });
+    } else {
+      throw Exception('Failed to load cart: ${response.statusCode}');
     }
+  } catch (e) {
+    print('❌ Error fetching cart: $e');
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _restaurantCart = null;
+    });
   }
+}
 
   @override
   Widget build(BuildContext context) {

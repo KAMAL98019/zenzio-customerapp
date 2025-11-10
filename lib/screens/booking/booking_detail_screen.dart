@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   const BookingDetailScreen({super.key});
@@ -21,42 +23,58 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     fetchRestaurant(restaurantId);
   }
 
-  Future<void> fetchRestaurant(String id) async {
-    try {
-      final response = await http.get(
-        Uri.parse('https://backend.zenzio.in/api/customer/restaurants/$id'),
-      );
+ Future<void> fetchRestaurant(String id) async {
+  try {
+    const storage = FlutterSecureStorage();
+    final token = await storage.read(key: 'auth_token');
 
-      if (!mounted) return;
+    final headers = {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty)
+        'Authorization': 'Bearer $token',
+    };
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true && data['data'] != null) {
-          setState(() {
-            restaurant = data['data'];
-            isLoading = false;
-          });
-        } else {
-          setState(() {
-            isError = true;
-            isLoading = false;
-          });
-        }
+    print('📡 Fetching restaurant $id with token: ${token != null ? "✅ Present" : "❌ Missing"}');
+
+    final response = await http.get(
+      Uri.parse('https://backend.zenzio.in/api/customer/restaurants/$id'),
+      headers: headers,
+    );
+
+    print('📥 Response status: ${response.statusCode}');
+    print('📦 Response body: ${response.body}');
+
+    if (!mounted) return;
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      if (data['success'] == true && data['data'] != null) {
+        setState(() {
+          restaurant = data['data'];
+          isLoading = false;
+          isError = false;
+        });
       } else {
         setState(() {
           isError = true;
           isLoading = false;
         });
       }
-    } catch (e) {
-      if (!mounted) return;
+    } else {
       setState(() {
         isError = true;
         isLoading = false;
       });
     }
+  } catch (e) {
+    print('❌ Exception while fetching restaurant: $e');
+    if (!mounted) return;
+    setState(() {
+      isError = true;
+      isLoading = false;
+    });
   }
-
+}
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
@@ -129,7 +147,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Restaurant name
                   Text(
                     rest['rest_name'] ?? 'Not updated',
                     style: const TextStyle(
@@ -139,8 +156,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-
-                  // Address
                   Text(
                     rest['rest_address'] ?? 'Address not updated',
                     style: const TextStyle(
@@ -149,8 +164,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-
-                  // Average cost
                   Text(
                     'Avg cost for two: ₹${rest['avg_cost_two'] ?? "Not updated"}',
                     style: const TextStyle(
@@ -159,8 +172,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  // Description
                   Text(
                     rest['description'] ?? 'Description not available',
                     style: const TextStyle(
@@ -170,8 +181,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // Gallery
                   const Text(
                     'Restaurant Gallery',
                     style: TextStyle(
@@ -183,8 +192,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   const SizedBox(height: 12),
                   _buildGallerySection(rest['images']),
                   const SizedBox(height: 24),
-
-                  // Events Section
                   const Text(
                     'Special Events',
                     style: TextStyle(
@@ -216,8 +223,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         )
                       : const Text(
                           'No special events available',
-                          style:
-                              TextStyle(color: Colors.grey, fontSize: 14),
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
                         ),
                 ],
               ),
@@ -285,9 +291,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           const SizedBox(height: 8),
           Text(description,
               style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF757575),
-                  height: 1.4)),
+                  fontSize: 13, color: Color(0xFF757575), height: 1.4)),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,

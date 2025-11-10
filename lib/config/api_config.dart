@@ -1,24 +1,22 @@
-// lib/config/api_config.dart
 class ApiConfig {
   // Base URL
   static const String baseUrl = 'https://backend.zenzio.in';
   static const String apiVersion = '/api';
-  
   // Full API Base
   static const String apiBaseUrl = '$baseUrl$apiVersion';
   
   // ==================== AUTH ENDPOINTS ====================
   static const String loginEndpoint = '$apiVersion/users/auth/login';
   // static const String signupEndpoint = '$apiVersion/auth/signup';
-static const String signupEndpoint = '$apiVersion/users';
-  static const String otpSendEndpoint = '$apiVersion/auth/send-otp';
-  static const String otpVerifyEndpoint = '$apiVersion/auth/verify-otp';
-  static const String forgotPasswordEndpoint = '$apiVersion/auth/forgot-password';
-  static const String resetPasswordEndpoint = '$apiVersion/auth/reset-password';
+  static const String signupEndpoint = '$apiVersion/users';
+  static const String otpSendEndpoint = '$apiVersion/users/auth/send-mobile-otp';
+  static const String otpVerifyEndpoint = '$apiBaseUrl/users/auth/verify-mobile-otp';
+  static const String forgotPasswordEndpoint = '$apiVersion/users/auth/forgot-password/send-otp';
+  static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
+  // static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
   static const String logoutEndpoint = '$apiVersion/auth/logout';
   
-
-    static const String foodItemsEndpoint = '$baseUrl/food-items';
+  static const String foodItemsEndpoint = '$baseUrl/food-items';
 
   // ==================== USER ENDPOINTS ====================
   static const String usersEndpoint = '$apiVersion/users';

@@ -22,7 +22,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
   String _selectedGender = 'Male';
-  String _selectedCountryCode = '+1';
+  String _selectedCountryCode = '+91';
   final AuthService _authService = AuthService();
   bool _isLoading = false;
 

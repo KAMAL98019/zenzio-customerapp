@@ -328,6 +328,7 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'restaurant_detail_screen.dart';
 import '../../config/api_config.dart';
@@ -341,6 +342,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+final storage = const FlutterSecureStorage();
 
   List<dynamic> _restaurants = [];
   bool _isLoading = true;
@@ -355,58 +357,78 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _fetchRestaurants() async {
+
+Future<void> _fetchRestaurants() async {
+  if (!mounted) return;
+
+  setState(() {
+    _isLoading = true;
+    _hasError = false;
+  });
+
+  try {
+    // ✅ Get token from secure storage
+    final token = await storage.read(key: 'auth_token');
+
+    if (token == null || token.isEmpty) {
+      throw Exception('No token found. Please log in again.');
+    }
+
+    final url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.restaurantsEndpoint}');
+    print('🌐 Fetching restaurants from: $url');
+    print('🔐 Using token: $token');
+
+    // ✅ Add Authorization header
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.get(url, headers: headers).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Request timeout');
+      },
+    );
+
+    print('📥 Restaurant API Response: ${response.statusCode}');
+
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
-
-    try {
-      final url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.restaurantsEndpoint}');
-      print('🌐 Fetching restaurants from: $url');
+    if (response.statusCode == 200) {
+      final jsonResponse = json.decode(response.body);
+      print('✅ Restaurants loaded: ${jsonResponse['data']?.length ?? 0}');
       
-      final response = await http.get(
-        url,
-        headers: ApiConfig.headers,
-      ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          throw Exception('Request timeout');
-        },
-      );
-
-      print('📥 Restaurant API Response: ${response.statusCode}');
-
-      if (!mounted) return;
-
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        print('✅ Restaurants loaded: ${jsonResponse['data']?.length ?? 0}');
-        
-        setState(() {
-          _restaurants = jsonResponse['data'] ?? [];
-          _isLoading = false;
-        });
-      } else {
-        print('❌ Failed to load restaurants: ${response.statusCode}');
-        setState(() {
-          _hasError = true;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      print('❌ Error fetching restaurants: $e');
-      
-      if (!mounted) return;
-      
+      setState(() {
+        _restaurants = jsonResponse['data'] ?? [];
+        _isLoading = false;
+      });
+    } else if (response.statusCode == 401) {
+      print('🚫 Unauthorized — Token might be expired or invalid');
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+      });
+      // Optional: Navigate to login screen
+    } else {
+      print('❌ Failed to load restaurants: ${response.statusCode}');
       setState(() {
         _hasError = true;
         _isLoading = false;
       });
     }
+  } catch (e) {
+    print('❌ Error fetching restaurants: $e');
+
+    if (!mounted) return;
+
+    setState(() {
+      _hasError = true;
+      _isLoading = false;
+    });
   }
+}
+
 
   @override
   void dispose() {

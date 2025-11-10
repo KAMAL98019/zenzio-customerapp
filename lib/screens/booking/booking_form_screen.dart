@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zenzio_customer/screens/booking/booking_confirmation_screen.dart';
+import 'package:zenzio_customer/services/token_service.dart';
 
 class BookingFormScreen extends StatefulWidget {
   const BookingFormScreen({super.key});
@@ -28,22 +29,41 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserData(); // Load user data from SharedPreferences
+    _loadUserData(); 
+  }
+Future<void> _loadUserData() async {
+  final tokenService = TokenService();
+  final token = await tokenService.getToken();
+
+  if (token == null) {
+    print("⚠️ No token found. User not logged in.");
+    return;
   }
 
-  Future<void> _loadUserData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userData = prefs.getString('user_data');
-    if (userData != null) {
+  try {
+    final response = await http.get(
+      Uri.parse('https://backend.zenzio.in/api/customer/me'), // API endpoint for current user
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
       if (!mounted) return;
       setState(() {
-        user = json.decode(userData);
+        user = data['data']; // adjust based on API response
       });
-      print("✅ User loaded from SharedPreferences: $user");
+      print("✅ User loaded from token API: $user");
     } else {
-      print("⚠️ No user data found in SharedPreferences");
+      print("❌ Failed to load user data: ${response.statusCode} ${response.body}");
     }
+  } catch (e) {
+    print("❌ Error fetching user data: $e");
   }
+}
+
 
   @override
   void dispose() {
@@ -148,6 +168,10 @@ class _BookingFormScreenState extends State<BookingFormScreen> {
 Future<void> submitBooking() async {
   if (restaurant == null || user == null) return;
 
+  final tokenService = TokenService();
+  final token = await tokenService.getToken();
+  if (token == null) return;
+
   final bookingData = {
     "userId": user!['id'],
     "restaurantId": restaurant!['id'],
@@ -162,35 +186,37 @@ Future<void> submitBooking() async {
   try {
     final response = await http.post(
       Uri.parse('https://backend.zenzio.in/api/customer/bookings'),
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token", // Use token here
+      },
       body: json.encode(bookingData),
     );
 
     final data = json.decode(response.body);
     print("✅ Booking response: ${response.statusCode} - $data");
 
-   if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => BookingConfirmationScreen(),
-        settings: RouteSettings(
-          arguments: {
-            'restaurantName': restaurant!['rest_name'],
-            'bookingDate': bookingData['bookingDate'],
-            'bookingTime': bookingData['bookingTime'],
-            'guestCount': bookingData['numberOfGuests'],
-          },
+    if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => BookingConfirmationScreen(),
+          settings: RouteSettings(
+            arguments: {
+              'restaurantName': restaurant!['rest_name'],
+              'bookingDate': bookingData['bookingDate'],
+              'bookingTime': bookingData['bookingTime'],
+              'guestCount': bookingData['numberOfGuests'],
+            },
+          ),
         ),
-      ),
-    );
-  });
-} else {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(data['message'] ?? "Booking failed")),
-  );
-}
-
+      );
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(data['message'] ?? "Booking failed")),
+      );
+    }
   } catch (e) {
     print("❌ Booking error: $e");
     if (!mounted) return;
@@ -199,6 +225,7 @@ Future<void> submitBooking() async {
     );
   }
 }
+
 
   @override
   Widget build(BuildContext context) {

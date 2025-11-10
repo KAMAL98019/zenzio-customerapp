@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/otp_verify_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -31,8 +30,6 @@ import 'screens/profile/help_support_screen.dart';
 import 'screens/profile/settings_screen.dart';
 import 'screens/profile/chat_assistant_screen.dart';
 import 'screens/profile/my_coupons_screen.dart';
-
-// ✅ Import auth service
 import 'services/auth_service.dart';
 
 // ✅ Initialize auth service before app starts
@@ -51,7 +48,7 @@ class ZenzioApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Zenzio - Food Delivery & Booking',
+      title: 'Zenzio - Food Delivery & Booking',  
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

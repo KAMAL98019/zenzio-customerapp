@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:zenzio_customer/screens/home/restaurant_detail_screen.dart';
 import 'package:zenzio_customer/screens/cart/checkout_screen.dart';
+import 'package:zenzio_customer/services/token_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -31,133 +32,144 @@ class _CartScreenState extends State<CartScreen> {
     _fetchCartData();
   }
 
-  Future<void> _fetchCartData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id');
+ Future<void> _fetchCartData() async {
+  String? errorMessage;
 
-      if (userId == null) throw Exception("User ID not found");
+  try {
+    final tokenService = TokenService();
+    final userId = await tokenService.getUserId();
 
-      final url = Uri.parse(
-        'https://backend.zenzio.in/api/cart/active?userId=$userId',
-      );
-      final response = await http.get(url);
+    if (userId == null) throw Exception("User ID not found");
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+    final url = Uri.parse('https://backend.zenzio.in/api/cart/active?userId=$userId');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer ${await tokenService.getToken()}'}, // ✅ token-based auth
+    );
 
-        if (data['success'] == true && data['cart'] != null) {
-          final cart = data['cart'];
-          _cartId = cart['id'] ?? cart['_id'];
-          final items = cart['items'] as List;
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
 
-          final firstItem = cart['items'].isNotEmpty ? cart['items'][0] : null;
-          final restaurant = firstItem != null
-              ? firstItem['food']['restaurant']
-              : null;
+      if (data['success'] == true && data['cart'] != null) {
+        final cart = data['cart'];
+        _cartId = cart['id'] ?? cart['_id'];
+        final items = cart['items'] as List;
 
-          if (restaurant != null) {
-            _restaurantName = restaurant['rest_name'] ?? 'Unknown Restaurant';
-            _restaurantId = restaurant['_id'] ?? restaurant['id'] ?? '';
-            debugPrint("🍽 Restaurant ID fetched: $_restaurantId");
+        final restaurant = cart['items'].isNotEmpty
+            ? cart['items'][0]['food']['restaurant']
+            : null;
 
-            _restaurantData = restaurant;
-          } else {
-            _restaurantName = 'Unknown Restaurant';
-            _restaurantId = '';
+        if (restaurant != null) {
+          _restaurantName = restaurant['rest_name'] ?? 'Unknown Restaurant';
+          _restaurantId = restaurant['_id'] ?? restaurant['id'] ?? '';
+          debugPrint("🍽 Restaurant ID fetched: $_restaurantId");
+        }
+
+        _cartItems = items.map((item) {
+          final food = item['food'];
+          double unitPrice = double.tryParse(item['unitPrice'].toString()) ?? 0;
+          double addOnPrice = 0;
+          if (item['selectedAddOns'] != null) {
+            for (var addOn in item['selectedAddOns']) {
+              addOnPrice += double.tryParse(addOn['price'].toString()) ?? 0;
+            }
           }
 
-          _cartItems = items.map((item) {
-            final food = item['food'];
-            double unitPrice =
-                double.tryParse(item['unitPrice'].toString()) ?? 0;
-            double addOnPrice = 0;
-            if (item['selectedAddOns'] != null) {
-              for (var addOn in item['selectedAddOns']) {
-                addOnPrice += double.tryParse(addOn['price'].toString()) ?? 0;
-              }
-            }
+          return CartItem(
+            id: item['id'] ?? item['_id'],
+            name: food['dishname'] ?? "Unknown Dish",
+            price: (unitPrice + addOnPrice).toInt(),
+            quantity: item['quantity'] ?? 1,
+            image: food['dishimage'] != null
+                ? "https://backend.zenzio.in${food['dishimage']}"
+                : '',
+          );
+        }).toList();
 
-            return CartItem(
-              id: item['id'] ?? item['_id'],
-              name: food['dishname'] ?? "Unknown Dish",
-              price: (unitPrice + addOnPrice).toInt(),
-              quantity: item['quantity'] ?? 1,
-              image: food['dishimage'] != null
-                  ? "https://backend.zenzio.in${food['dishimage']}"
-                  : '',
-            );
-          }).toList();
+        _deliveryFee = 50;
+        _taxes = _cartItems.isNotEmpty ? (_itemTotal * 0.05) : 0;
 
-          _deliveryFee = 50;
-          _taxes = _cartItems.isNotEmpty ? (_itemTotal * 0.05) : 0;
-
-          setState(() {
-            _isLoading = false;
-          });
-        } else {
-          setState(() {
-            _isLoading = false;
-            _errorMessage = "No active cart found.";
-          });
-        }
       } else {
-        throw Exception("Failed with status: ${response.statusCode}");
+        errorMessage = "No active cart found.";
       }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = "⚠️ Error loading cart. Please try again later.";
-      });
-      debugPrint("❌ Error: $e");
+    } else {
+      throw Exception("Failed with status: ${response.statusCode}");
     }
+  } catch (e) {
+    debugPrint("❌ Error: $e");
+    errorMessage = "⚠️ Error loading cart. Please try again later.";
+  } finally {
+    // ✅ Only update state if widget is still mounted
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _errorMessage = errorMessage;
+    });
   }
+}
 
-  Future<void> _updateQuantity(String itemId, int quantity) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id');
-      if (userId == null) return;
 
-      final url = Uri.parse('https://backend.zenzio.in/api/cart/items/$itemId');
-      final response = await http.put(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'userId': userId, 'quantity': quantity}),
-      );
+Future<void> _updateQuantity(String itemId, int quantity) async {
+  try {
+    final tokenService = TokenService();
+    final userId = await tokenService.getUserId();
+    final token = await tokenService.getToken(); // if JWT needed
 
-      if (response.statusCode == 200) {
-        debugPrint('✅ Quantity updated successfully');
-      } else {
-        debugPrint('⚠️ Failed to update quantity: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('❌ Error updating quantity: $e');
+    if (userId == null) return;
+
+    final url = Uri.parse('https://backend.zenzio.in/api/cart/items/$itemId');
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({'userId': userId, 'quantity': quantity}),
+    );
+
+    if (response.statusCode == 200) {
+      debugPrint('✅ Quantity updated successfully');
+    } else {
+      debugPrint(
+          '⚠️ Failed to update quantity: ${response.statusCode} ${response.body}');
     }
+  } catch (e) {
+    debugPrint('❌ Error updating quantity: $e');
   }
+}
+Future<void> _removeItem(String itemId, String restaurantId) async {
+  try {
+    final tokenService = TokenService();
+    final userId = await tokenService.getUserId();
+    final token = await tokenService.getToken();
 
-  Future<void> _removeItem(String itemId) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString('user_id');
-      if (userId == null) return;
+    if (userId == null) return;
 
-      final url = Uri.parse('https://backend.zenzio.in/api/cart/items/$itemId');
-      final response = await http.delete(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'userId': userId}),
-      );
+    final url = Uri.parse('https://backend.zenzio.in/api/cart/items/$itemId');
 
-      if (response.statusCode == 200) {
-        debugPrint('✅ Item removed successfully');
-      } else {
-        debugPrint('⚠️ Failed to remove item: ${response.statusCode}');
-      }
-    } catch (e) {
-      debugPrint('❌ Error removing item: $e');
+    final response = await http.delete(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        'userId': userId,
+        'restaurantId': restaurantId, // required by backend
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      debugPrint('✅ Item removed successfully');
+    } else {
+      debugPrint(
+          '⚠️ Failed to remove item: ${response.statusCode} ${response.body}');
     }
+  } catch (e) {
+    debugPrint('❌ Error removing item: $e');
   }
+}
+
 
   double get _itemTotal {
     return _cartItems.fold(
@@ -165,6 +177,46 @@ class _CartScreenState extends State<CartScreen> {
       (sum, item) => sum + (item.price * item.quantity),
     );
   }
+
+Future<Map<String, dynamic>?> _createPaymentOrder() async {
+  try {
+    final tokenService = TokenService();
+    final userId = await tokenService.getUserId();
+
+debugPrint("🛒 userid ID: $userId");
+debugPrint("🛒 Cart ID: $_cartId");
+    if (userId == null || _cartId == null) {
+
+      debugPrint('⚠️ User ID or Cart ID missing');
+      return null;
+    }
+
+    final url = Uri.parse('https://backend.zenzio.in/api/orders/create-payment-order');
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${await tokenService.getToken()}',
+      },
+      body: jsonEncode({
+        'userId': userId,
+        'cartId': _cartId,
+      }),
+    );
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      debugPrint("✅ Payment order created: $data");
+      return data;
+    } else {
+      debugPrint('⚠️ Failed to create payment order: ${response.statusCode}');
+      return null;
+    }
+  } catch (e) {
+    debugPrint('❌ Error creating payment order: $e');
+    return null;
+  }
+}
+
 
   @override
   void dispose() {
@@ -460,29 +512,42 @@ class _CartScreenState extends State<CartScreen> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _cartItems.isEmpty
-                    ? null
-                    : () async {
-                        final prefs = await SharedPreferences.getInstance();
-                        final userId = prefs.getString('user_id');
+              onPressed: _cartItems.isEmpty
+    ? null
+    : () async {
+        final paymentData = await _createPaymentOrder();
 
-                        if (userId != null && _cartId != null) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CheckoutScreen(
-                                userId: userId,
-                                cartId: _cartId!,
-                                total: _itemTotal + _deliveryFee + _taxes,
-                                totalAmount:
-                                    _itemTotal +
-                                    _deliveryFee +
-                                    _taxes, // ✅ added
-                              ),
-                            ),
-                          );
-                        }
-                      },
+        if (paymentData != null && paymentData['success'] == true) {
+          final userId = await TokenService().getUserId();
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CheckoutScreen(
+                userId: userId!,
+                cartId: _cartId!,
+                total: _itemTotal + _deliveryFee + _taxes,
+                totalAmount: _itemTotal + _deliveryFee + _taxes,
+                restaurantId: _restaurantId!,
+                // ✅ Pass Razorpay info to CheckoutScreen if needed
+                razorpayOrderId: paymentData['razorpayOrderId'],
+                currency: paymentData['currency'],
+                amount: paymentData['amount'],
+                key: paymentData['key'],
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to create payment order.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE53935),
                   foregroundColor: Colors.white,
@@ -604,7 +669,7 @@ class _CartScreenState extends State<CartScreen> {
                   setState(() {
                     _cartItems.remove(item);
                   });
-                  await _removeItem(item.id);
+                 await _removeItem(item.id, _cartId!);
                 },
                 child: const Row(
                   children: [

@@ -136,16 +136,20 @@
 // }
 
 // lib/services/restaurant_service.dart
+// 
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import '../data/models/restaurant_model.dart';
 import '../data/models/food_model.dart';
+import 'api_service.dart';
 
 class RestaurantService {
-  final String baseUrl = ApiConfig.baseUrl;
+  final _apiService = ApiService();
+  final _storage = const FlutterSecureStorage();
 
-  // ✅ Hardcoded category mapping as fallback
+  // ✅ Hardcoded category mapping
   static const Map<String, String> categoryMapping = {
     'a175f7a2-b2ce-435b-a81a-45a26e7aa62f': 'Starters',
     'b286g8b3-c3df-546c-b92b-56b37f8bb73g': 'Main Course',
@@ -154,161 +158,99 @@ class RestaurantService {
     'e5b9j1e6-f6gi-879f-e25e-89e60i1ee06j': 'Sides',
   };
 
+  // ✅ Fetch all restaurants
   Future<List<Restaurant>> fetchRestaurants() async {
-    final url = Uri.parse('$baseUrl${ApiConfig.restaurantsEndpoint}');
-    final response = await http.get(url, headers: ApiConfig.headers);
+    try {
+      final response = await _apiService.get(
+        ApiConfig.restaurantsEndpoint,
+        requiresAuth: true,
+      );
+
+      print('📥 Restaurant API Response: $response');
+      final List<dynamic> data = response['data'] ?? [];
+      return data.map((item) => Restaurant.fromJson(item)).toList();
+    } catch (e) {
+      print('❌ Failed to fetch restaurants: $e');
+      rethrow;
+    }
+  }
+
+  // ✅ Fetch single restaurant details by ID
+  Future<Restaurant> fetchRestaurantById(String id) async {
+    final token = await _storage.read(key: 'auth_token');
+
+    if (token == null || token.isEmpty) {
+      throw Exception('No token found. Please log in again.');
+    }
+
+    print('🔐 Using token for fetchRestaurantById: $token');
+
+final url = Uri.parse('${ApiConfig.baseUrl}/api/restaurants/$id');
+    final response = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    });
+
+    print('📥 fetchRestaurantById: ${response.statusCode}');
 
     if (response.statusCode == 200) {
-      final jsonResponse = json.decode(response.body);
-      final List<dynamic> data = jsonResponse['data'];
-      return data.map((item) => Restaurant.fromJson(item)).toList();
+      final jsonData = jsonDecode(response.body);
+      return Restaurant.fromJson(jsonData['data']);
+    } else if (response.statusCode == 401) {
+      throw Exception('Unauthorized (401) — Invalid or expired token.');
     } else {
-      throw Exception('Failed to load restaurants');
+      throw Exception('Failed to load restaurant: ${response.body}');
     }
   }
 
-  Future<Restaurant> fetchRestaurantById(String restaurantId) async {
-    try {
-      final url = Uri.parse('$baseUrl${ApiConfig.restaurantDetailEndpoint(restaurantId)}');
-      print('🌐 Fetching restaurant details from: $url');
-      
-      final response = await http.get(url, headers: ApiConfig.headers);
-      
-      print('📥 Restaurant detail API Response: ${response.statusCode}');
-      print('📦 Response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        
-        // ✅ Handle different response structures
-        Map<String, dynamic>? restaurantData;
-        
-        // Try different response structures
-        if (jsonResponse is Map<String, dynamic>) {
-          if (jsonResponse.containsKey('data') && jsonResponse['data'] != null) {
-            restaurantData = jsonResponse['data'] as Map<String, dynamic>;
-          } else if (jsonResponse.containsKey('restaurant')) {
-            restaurantData = jsonResponse['restaurant'] as Map<String, dynamic>;
-          } else if (jsonResponse.containsKey('id') || jsonResponse.containsKey('_id')) {
-            // The response itself is the restaurant object
-            restaurantData = jsonResponse;
-          }
-        }
-
-        if (restaurantData == null) {
-          print('❌ Could not find restaurant data in response');
-          print('📦 Response structure: ${jsonResponse.keys.toList()}');
-          throw Exception('Invalid response format: no restaurant data found');
-        }
-
-        print('✅ Restaurant data found: ${restaurantData['rest_name']}');
-        return Restaurant.fromJson(restaurantData);
-        
-      } else if (response.statusCode == 404) {
-        throw Exception('Restaurant not found');
-      } else {
-        throw Exception('Failed to load restaurant details: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Error in fetchRestaurantById: $e');
-      rethrow;
-    }
-  }
-
-  // Fetch foods for a specific restaurant
+  // ✅ Fetch all foods of a restaurant (using token)
   Future<List<Food>> fetchRestaurantFoods(String restaurantId) async {
-    try {
-      final url = Uri.parse('$baseUrl/api/restaurants/$restaurantId/foods');
-      print('🌐 Fetching foods from: $url');
-      
-      final response = await http.get(url, headers: ApiConfig.headers);
-      
-      print('📥 Foods API Response: ${response.statusCode}');
+    final token = await _storage.read(key: 'auth_token');
 
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
+    if (token == null || token.isEmpty) {
+      throw Exception('No token found. Please log in again.');
+    }
 
-        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          final List<dynamic> data = jsonResponse['data'];
-          print('✅ Found ${data.length} foods');
-          return data.map((item) => Food.fromJson(item)).toList();
-        } else {
-          print('⚠️ No foods found in response');
-          return [];
-        }
-      } else {
-        print('❌ Foods API failed with status: ${response.statusCode}');
-        throw Exception('Failed to load restaurant foods');
-      }
-    } catch (e) {
-      print('❌ Error fetching foods: $e');
-      rethrow;
+    final url = Uri.parse('${ApiConfig.baseUrl}/restaurants/$restaurantId/foods');
+    print('🌐 Fetching foods from: $url');
+    print('🔐 Using token: $token');
+
+    final response = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    });
+
+    print('📥 fetchRestaurantFoods: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final jsonData = jsonDecode(response.body);
+      final List<dynamic> data = jsonData['data'] ?? [];
+      return data.map((item) => Food.fromJson(item)).toList();
+    } else if (response.statusCode == 401) {
+      throw Exception('Unauthorized (401) — Invalid or expired token.');
+    } else {
+      throw Exception('Failed to load foods: ${response.body}');
     }
   }
 
-  // ✅ Get category name from ID using the mapping
-  String getCategoryName(String? categoryId) {
-    if (categoryId == null || categoryId.isEmpty) {
-      return 'Others';
-    }
-    return categoryMapping[categoryId] ?? 'Others';
-  }
+  // ✅ Category utilities
+  String getCategoryName(String? categoryId) =>
+      categoryMapping[categoryId] ?? 'Others';
 
-  // ✅ Group foods by category name (not ID)
   Map<String, List<Food>> groupFoodsByCategoryName(List<Food> foods) {
-    final Map<String, List<Food>> groupedFoods = {};
-
+    final grouped = <String, List<Food>>{};
     for (var food in foods) {
-      // Get the category name from the mapping
-      final categoryName = getCategoryName(food.categoryId);
-      
-      if (!groupedFoods.containsKey(categoryName)) {
-        groupedFoods[categoryName] = [];
-      }
-      groupedFoods[categoryName]!.add(food);
+      final name = getCategoryName(food.categoryId);
+      grouped.putIfAbsent(name, () => []).add(food);
     }
-
-    // ✅ Sort categories in a logical order
-    final sortedCategories = [
-      'Starters',
-      'Main Course',
-      'Sides',
-      'Desserts',
-      'Drinks',
-      'Others',
-    ];
-
-    final sortedMap = <String, List<Food>>{};
-    for (var category in sortedCategories) {
-      if (groupedFoods.containsKey(category)) {
-        sortedMap[category] = groupedFoods[category]!;
-      }
-    }
-
-    // Add any categories not in the sorted list
-    for (var entry in groupedFoods.entries) {
-      if (!sortedMap.containsKey(entry.key)) {
-        sortedMap[entry.key] = entry.value;
-      }
-    }
-
-    return sortedMap;
+    return grouped;
   }
 
-  Future<Map<String, List<Food>>> fetchRestaurantFoodsWithCategories(String restaurantId) async {
-    if (restaurantId.isEmpty) {
-      print('⚠️ restaurantId is empty. Returning empty map.');
-      return {};
-    }
-
-    try {
-      final foods = await fetchRestaurantFoods(restaurantId);
-      print('✅ Successfully fetched ${foods.length} foods for $restaurantId');
-      return groupFoodsByCategoryName(foods);
-    } catch (e, stackTrace) {
-      print('💥 Error in fetchRestaurantFoodsWithCategories: $e');
-      print(stackTrace);
-      return {};
-    }
+  // ✅ Fetch & group foods
+  Future<Map<String, List<Food>>> fetchRestaurantFoodsWithCategories(
+      String restaurantId) async {
+    if (restaurantId.isEmpty) return {};
+    final foods = await fetchRestaurantFoods(restaurantId);
+    return groupFoodsByCategoryName(foods);
   }
 }
