@@ -13,8 +13,10 @@ class OTPVerifyScreen extends StatefulWidget {
 }
 
 class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
-  final List<TextEditingController> _otpControllers =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _otpControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
   int _resendTimer = 59;
   Timer? _timer;
@@ -95,6 +97,8 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
     setState(() => _isLoading = true);
 
     try {
+      print('📦 Verifying OTP for $_phone');
+
       final res = await _authService.verifyOTP(
         phone: _phone,
         countryCode: _countryCode,
@@ -102,29 +106,12 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
       );
 
       setState(() => _isLoading = false);
-
-      if (res['success'] == true) {
-        // Optionally show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Verification successful!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        // If backend signaled this is a new user, you may want to navigate to signup/profile flow.
-        // Otherwise navigate to main app.
-        if (_isNewUser || (res['isNewUser'] == true)) {
-          // Example: go to signup or profile completion
-          // Keep your app flow consistent; here we go to main-nav for now
-          Navigator.pushReplacementNamed(context, '/main-navigation');
-        } else {
-          Navigator.pushReplacementNamed(context, '/main-navigation');
-        }
-      } else {
-        final msg = res['message'] ?? 'OTP verification failed';
-        _showErrorDialog(msg);
-      }
+      print(res);
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/main-navigation',
+        (route) => false,
+      );
     } on ApiException catch (e) {
       setState(() => _isLoading = false);
       _showErrorDialog(e.message);
@@ -268,13 +255,15 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
                             counterText: '',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  const BorderSide(color: Color(0xFFE0E0E0)),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE0E0E0),
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
-                              borderSide:
-                                  const BorderSide(color: Color(0xFFE0E0E0)),
+                              borderSide: const BorderSide(
+                                color: Color(0xFFE0E0E0),
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
@@ -381,7 +370,9 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
                 color: Colors.black.withOpacity(0.35),
                 child: const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE53935)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFE53935),
+                    ),
                   ),
                 ),
               ),
@@ -391,8 +382,6 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
     );
   }
 }
-
-
 
 // import 'package:flutter/material.dart';
 // import 'package:flutter/services.dart';

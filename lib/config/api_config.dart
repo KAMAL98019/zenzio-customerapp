@@ -7,22 +7,22 @@ class ApiConfig {
   static const String apiBaseUrl = '$baseUrl$apiVersion';
   
   // ✅ Use your actual values from /clients/generate
-  static const clientId = 'a6856a36-c076-4319-a709-514d15722dda';
+  static const clientId = 'b8da45ba-2a7a-488b-9764-60016ed964a5';
   static const clientSecret = '';
 
 
   // ==================== AUTH ENDPOINTS ====================
-  static const String signupEndpoint = '$baseUrl/users';
+  // static const String signupEndpoint = '/users';
   // Existing endpoints ...
-  // static const String signupEndpoint = "/users/auth/signup/email";
-  // static const String loginEndpoint = "/users/auth/login/email";
+  static const String signupEndpoint = "/users/auth/signup/email";
+  static const String loginEndpoint = "/users/auth/login/email";
 
   static const String firebaseSendVerificationEndpoint = "/firebase/send-verification";
 
-  static const String loginEndpoint = '$apiVersion/users/auth/login';
+  // static const String loginEndpoint = '$apiVersion/users/auth/login';
   // static const String signupEndpoint = '$apiVersion/users';
-  static const String otpSendEndpoint = '$apiVersion/users/auth/send-mobile-otp';
-  static const String otpVerifyEndpoint = '$apiBaseUrl/users/auth/verify-mobile-otp';
+  static const String otpSendEndpoint = '/otp/send';
+  static const String otpVerifyEndpoint = '/otp/verify';
   static const String forgotPasswordEndpoint = '$apiVersion/users/auth/forgot-password/send-otp';
   static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
   // static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';

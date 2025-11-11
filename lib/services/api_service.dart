@@ -56,10 +56,17 @@ class ApiService {
       // Handle token expiration (401)
       if (statusCode == 401) {
         await _storage.delete(key: 'auth_token');
-        throw ApiException('Session expired. Please log in again.', statusCode: 401);
+        throw ApiException(
+          'Session expired. Please log in again.',
+          statusCode: 401,
+        );
       }
 
-      final errorMessage = body['message'] ?? body['error'] ?? body['detail'] ?? 'An error occurred';
+      final errorMessage =
+          body['message'] ??
+          body['error'] ??
+          body['detail'] ??
+          'An error occurred';
 
       throw ApiException(
         errorMessage,
@@ -77,53 +84,70 @@ class ApiService {
 
   // ==================== GET ====================
   Future<dynamic> get(
-  String endpoint, {
-  bool requiresAuth = false,
-  String? token, // 👈 add this line
-}) async {
-  try {
-    final headers = {
-      'Content-Type': 'application/json',
-      if (requiresAuth && token != null) 'Authorization': 'Bearer $token',
-    };
+    String endpoint, {
+    bool requiresAuth = false,
+    String? token, // 👈 add this line
+  }) async {
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        if (requiresAuth && token != null) 'Authorization': 'Bearer $token',
+      };
 
-    final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-      headers: headers,
-    );
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
+        headers: headers,
+      );
 
-    return _handleResponse(response);
-  } catch (e) {
-    throw Exception('GET request failed: $e');
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('GET request failed: $e');
+    }
   }
-}
-
 
   // ==================== POST ====================
- Future<dynamic> post(
-  String endpoint, {
-  required Map<String, dynamic> body,
-  bool requiresAuth = false,
-  String? token, // 👈 add this
-}) async {
-  try {
-    final headers = {
-      'Content-Type': 'application/json',
-      if (requiresAuth && token != null) 'Authorization': 'Bearer $token',
-    };
+  Future<dynamic> post(
+    String endpoint, {
+    required Map<String, dynamic> body,
+    bool requiresAuth = false,
+    String? token,
+  }) async {
+    try {
+      // ✅ Add headers
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'platform': 'Android',
+        'User-Agent': 'Android', // 👈 add this line
+        'mode': "development",
 
-    final response = await http.post(
-      Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-      headers: headers,
-      body: jsonEncode(body),
-    );
+        'clientId': ApiConfig.clientId,
 
-    return _handleResponse(response);
-  } catch (e) {
-    throw Exception('POST request failed: $e');
+        // 'client-secret': ApiConfig.clientSecret, // temporarily disabled
+        if (requiresAuth && token != null) 'Authorization': 'Bearer $token',
+      };
+
+      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+
+      print('🌐 POST: $uri');
+      print('📤 Headers: $headers');
+      print('📦 Body: ${jsonEncode(body)}');
+
+      final response = await http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      return await _handleResponse(response);
+    } catch (e) {
+      print('❌ POST error: $e');
+      throw ApiException('request failed: $e');
+    }
   }
-}
-
 
   // ==================== PUT ====================
   Future<dynamic> put(
@@ -137,7 +161,11 @@ class ApiService {
       print('📤 Body: ${json.encode(body)}');
 
       final response = await http
-          .put(uri, headers: await _getHeaders(requiresAuth: requiresAuth), body: json.encode(body))
+          .put(
+            uri,
+            headers: await _getHeaders(requiresAuth: requiresAuth),
+            body: json.encode(body),
+          )
           .timeout(ApiConfig.connectTimeout);
 
       print('✅ Response: ${response.statusCode}');
@@ -148,42 +176,43 @@ class ApiService {
   }
 
   // ==================== MULTIPART ====================
- Future<dynamic> multipartRequest(
-  String endpoint, {
-  required String method,
-  required Map<String, String> fields,
-  required Map<String, File> files,
-  bool requiresAuth = false,
-  String? token, // 👈 add this
-}) async {
-  try {
-    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-    final request = http.MultipartRequest(method, uri);
+  Future<dynamic> multipartRequest(
+    String endpoint, {
+    required String method,
+    required Map<String, String> fields,
+    required Map<String, File> files,
+    bool requiresAuth = false,
+    String? token, // 👈 add this
+  }) async {
+    try {
+      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+      final request = http.MultipartRequest(method, uri);
 
-    // ✅ Add headers
-    if (requiresAuth && token != null) {
-      request.headers['Authorization'] = 'Bearer $token';
+      // ✅ Add headers
+      if (requiresAuth && token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+
+      fields.forEach((key, value) => request.fields[key] = value);
+      for (final entry in files.entries) {
+        request.files.add(
+          await http.MultipartFile.fromPath(entry.key, entry.value.path),
+        );
+      }
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(responseBody);
+      } else {
+        throw Exception('Failed to upload file: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Multipart request failed: $e');
     }
-
-    fields.forEach((key, value) => request.fields[key] = value);
-    for (final entry in files.entries) {
-      request.files.add(await http.MultipartFile.fromPath(entry.key, entry.value.path));
-    }
-
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
-
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(responseBody);
-    } else {
-      throw Exception('Failed to upload file: ${response.statusCode}');
-    }
-  } catch (e) {
-    throw Exception('Multipart request failed: $e');
   }
 }
-}
-
 
 // import 'dart:convert';
 // import 'dart:io';

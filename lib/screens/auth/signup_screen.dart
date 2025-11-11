@@ -1,10 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:zenzio_customer/screens/auth/VerifyEmailScreen.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../core/constants/app_colors.dart';
-import '../../widgets/custom_button.dart'; 
+import '../../widgets/custom_button.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -15,6 +16,7 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _mobileController = TextEditingController();
@@ -30,6 +32,7 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _mobileController.dispose();
@@ -46,9 +49,7 @@ class _SignupScreenState extends State<SignupScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFFE53935),
-            ),
+            colorScheme: const ColorScheme.light(primary: Color(0xFFE53935)),
           ),
           child: child!,
         );
@@ -62,21 +63,22 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  // ✅ Updated Signup Function with detailed error handling
   Future<void> _handleSignup() async {
     if (_nameController.text.trim().isEmpty) {
-      _showErrorDialog('Please enter your full name');
+      _showErrorDialog('Please enter your first name');
+      return;
+    }
+    if (_lastNameController.text.trim().isEmpty) {
+      _showErrorDialog('Please enter your last name');
       return;
     }
     if (_emailController.text.trim().isEmpty) {
       _showErrorDialog('Please enter your email');
       return;
     }
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-        .hasMatch(_emailController.text.trim())) {
-      _showErrorDialog('Please enter a valid email address');
-      return;
-    }
-    if (_passwordController.text.isEmpty || _passwordController.text.length < 6) {
+    if (_passwordController.text.isEmpty ||
+        _passwordController.text.length < 6) {
       _showErrorDialog('Password must be at least 6 characters');
       return;
     }
@@ -94,10 +96,13 @@ class _SignupScreenState extends State<SignupScreen> {
     try {
       await _authService.register(
         name: _nameController.text.trim(),
+        lastName: _lastNameController.text.trim(),
         email: _emailController.text.trim(),
         password: _passwordController.text,
         phone: _mobileController.text.trim(),
         countryCode: _selectedCountryCode,
+        dateOfBirth: _birthdayController.text.trim(),
+        gender: _selectedGender,
       );
 
       setState(() => _isLoading = false);
@@ -109,21 +114,50 @@ class _SignupScreenState extends State<SignupScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Navigator.pushReplacementNamed(context, '/');
         Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(
-    builder: (_) => VerifyEmailScreen(email: _emailController.text),
-  ),
-);
-
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerifyEmailScreen(email: _emailController.text),
+          ),
+        );
       }
-    } on ApiException catch (e) {
-      setState(() => _isLoading = false);
-      _showErrorDialog(e.message);
     } catch (e) {
       setState(() => _isLoading = false);
-      _showErrorDialog('An unexpected error occurred. Please try again.');
+
+      String errorMessage = 'An unexpected error occurred. Please try again.';
+
+      // ✅ Show only the API "details" error if available
+      if (e is ApiException) {
+        try {
+          final Map<String, dynamic> errorData = jsonDecode(e.message);
+
+          if (errorData['details'] != null &&
+              errorData['details'] is List &&
+              (errorData['details'] as List).isNotEmpty) {
+            errorMessage = (errorData['details'] as List).join('\n');
+          } else if (errorData['details'] is String) {
+            errorMessage = errorData['details'];
+          } else {
+            errorMessage = e.message;
+          }
+        } catch (_) {
+          // fallback — try decoding from .toString()
+          try {
+            final Map<String, dynamic> fallback = jsonDecode(e.toString());
+            if (fallback['details'] != null &&
+                fallback['details'] is List &&
+                (fallback['details'] as List).isNotEmpty) {
+              errorMessage = (fallback['details'] as List).join('\n');
+            } else {
+              errorMessage = fallback['message'] ?? e.toString();
+            }
+          } catch (_) {
+            errorMessage = e.toString();
+          }
+        }
+      }
+
+      _showErrorDialog("Something went wrong");
     }
   }
 
@@ -184,8 +218,14 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 32),
                     _buildTextField(
-                        controller: _nameController,
-                        hintText: 'Enter your full name'),
+                      controller: _nameController,
+                      hintText: 'Enter your first name',
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      controller: _lastNameController,
+                      hintText: 'Enter your last name',
+                    ),
                     const SizedBox(height: 16),
                     _buildTextField(
                       controller: _emailController,
@@ -204,8 +244,9 @@ class _SignupScreenState extends State<SignupScreen> {
                               : Icons.visibility,
                           color: const Color(0xFF9E9E9E),
                         ),
-                        onPressed: () =>
-                            setState(() => _obscurePassword = !_obscurePassword),
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -224,13 +265,18 @@ class _SignupScreenState extends State<SignupScreen> {
                               value: _selectedCountryCode,
                               underline: const SizedBox(),
                               items: ['+1', '+91', '+44', '+61']
-                                  .map((code) => DropdownMenuItem(
-                                        value: code,
-                                        child: Text(code,
-                                            style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w500)),
-                                      ))
+                                  .map(
+                                    (code) => DropdownMenuItem(
+                                      value: code,
+                                      child: Text(
+                                        code,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  )
                                   .toList(),
                               onChanged: (value) =>
                                   setState(() => _selectedCountryCode = value!),
@@ -253,8 +299,11 @@ class _SignupScreenState extends State<SignupScreen> {
                       hintText: 'Select your birthday',
                       readOnly: true,
                       suffixIcon: IconButton(
-                        icon: const Icon(Icons.calendar_today,
-                            color: Color(0xFF9E9E9E), size: 20),
+                        icon: const Icon(
+                          Icons.calendar_today,
+                          color: Color(0xFF9E9E9E),
+                          size: 20,
+                        ),
                         onPressed: () => _selectDate(context),
                       ),
                       onTap: () => _selectDate(context),
@@ -273,15 +322,21 @@ class _SignupScreenState extends State<SignupScreen> {
                         value: _selectedGender,
                         isExpanded: true,
                         underline: const SizedBox(),
-                        icon: const Icon(Icons.keyboard_arrow_down,
-                            color: Color(0xFF9E9E9E)),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Color(0xFF9E9E9E),
+                        ),
                         style: const TextStyle(
-                            fontSize: 14, color: Color(0xFF2D2D2D)),
+                          fontSize: 14,
+                          color: Color(0xFF2D2D2D),
+                        ),
                         items: ['Male', 'Female', 'Other', 'Prefer not to say']
-                            .map((gender) => DropdownMenuItem(
-                                  value: gender,
-                                  child: Text(gender),
-                                ))
+                            .map(
+                              (gender) => DropdownMenuItem(
+                                value: gender,
+                                child: Text(gender),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) =>
                             setState(() => _selectedGender = value!),
@@ -309,13 +364,16 @@ class _SignupScreenState extends State<SignupScreen> {
                             text: TextSpan(
                               text: 'I agree to the ',
                               style: const TextStyle(
-                                  fontSize: 13, color: Color(0xFF757575)),
+                                fontSize: 13,
+                                color: Color(0xFF757575),
+                              ),
                               children: [
                                 TextSpan(
                                   text: 'Terms & Conditions',
                                   style: const TextStyle(
-                                      color: Color(0xFFE53935),
-                                      fontWeight: FontWeight.w500),
+                                    color: Color(0xFFE53935),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {},
                                 ),
@@ -323,8 +381,9 @@ class _SignupScreenState extends State<SignupScreen> {
                                 TextSpan(
                                   text: 'Privacy Policy',
                                   style: const TextStyle(
-                                      color: Color(0xFFE53935),
-                                      fontWeight: FontWeight.w500),
+                                    color: Color(0xFFE53935),
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {},
                                 ),
@@ -335,28 +394,29 @@ class _SignupScreenState extends State<SignupScreen> {
                       ],
                     ),
                     const SizedBox(height: 32),
-
-                    // ✅ USE CUSTOM BUTTON HERE
                     CustomButton(
                       text: 'Sign Up',
-                      onPressed:
-                          (_agreeToTerms && !_isLoading) ? _handleSignup : () {},
+                      onPressed: (_agreeToTerms && !_isLoading)
+                          ? _handleSignup
+                          : () {},
                       isLoading: _isLoading,
                     ),
-
                     const SizedBox(height: 24),
                     Center(
                       child: RichText(
                         text: TextSpan(
                           text: 'Already have an account? ',
                           style: const TextStyle(
-                              color: Color(0xFF757575), fontSize: 14),
+                            color: Color(0xFF757575),
+                            fontSize: 14,
+                          ),
                           children: [
                             TextSpan(
                               text: 'Login',
                               style: const TextStyle(
-                                  color: Color(0xFFE53935),
-                                  fontWeight: FontWeight.w600),
+                                color: Color(0xFFE53935),
+                                fontWeight: FontWeight.w600,
+                              ),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () => Navigator.pop(context),
                             ),
@@ -369,15 +429,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
             ),
-
-            // ✅ LOADING OVERLAY
             if (_isLoading)
               Container(
                 color: Colors.black.withOpacity(0.3),
                 child: const Center(
                   child: CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Color(0xFFE53935)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFFE53935),
+                    ),
                   ),
                 ),
               ),
@@ -418,8 +477,10 @@ class _SignupScreenState extends State<SignupScreen> {
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: Color(0xFFE53935)),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
         filled: true,
         fillColor: Colors.white,
         suffixIcon: suffixIcon,

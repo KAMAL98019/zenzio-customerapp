@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -36,88 +38,89 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
- Future<void> _requestAppPermissions() async {
-  List<Permission> permissions = [
-    Permission.location,
-    Permission.camera,
-    Permission.photos,
-    Permission.storage,
-  ];
+  Future<void> _requestAppPermissions() async {
+    List<Permission> permissions = [
+      Permission.location,
+      Permission.camera,
+      Permission.photos,
+      Permission.storage,
+    ];
 
-  List<Permission> toRequest = [];
+    List<Permission> toRequest = [];
 
-  for (var permission in permissions) {
-    if (!await permission.isGranted) {
-      toRequest.add(permission);
+    for (var permission in permissions) {
+      if (!await permission.isGranted) {
+        toRequest.add(permission);
+      }
+    }
+
+    if (toRequest.isNotEmpty) {
+      Map<Permission, PermissionStatus> statuses = await toRequest.request();
+
+      final denied = statuses.entries
+          .where((entry) => !entry.value.isGranted)
+          .map((entry) => entry.key)
+          .toList();
+
+      if (denied.isNotEmpty) {
+        _showPermissionDeniedDialog(denied);
+      }
     }
   }
 
-  if (toRequest.isNotEmpty) {
-    Map<Permission, PermissionStatus> statuses = await toRequest.request();
+  Future<Map<Permission, PermissionStatus>> _requestPermissions() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.location,
+      Permission.camera,
+      Permission.photos,
+      Permission.storage,
+    ].request();
 
-    final denied = statuses.entries
-        .where((entry) => !entry.value.isGranted)
-        .map((entry) => entry.key)
-        .toList();
-
-    if (denied.isNotEmpty) {
-      _showPermissionDeniedDialog(denied);
-    }
+    return statuses;
   }
-}
 
+  void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
+    // Build a friendly message listing only denied permissions
+    String deniedList = deniedPermissions
+        .map((p) {
+          switch (p) {
+            case Permission.location:
+              return 'Location';
+            case Permission.camera:
+              return 'Camera';
+            case Permission.photos:
+              return 'Photos';
+            case Permission.storage:
+              return 'Storage';
+            default:
+              return p.toString();
+          }
+        })
+        .join(', ');
 
-Future<Map<Permission, PermissionStatus>> _requestPermissions() async {
-  Map<Permission, PermissionStatus> statuses = await [
-    Permission.location,
-    Permission.camera,
-    Permission.photos,
-    Permission.storage,
-  ].request();
-
-  return statuses;
-}
-
-void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
-  // Build a friendly message listing only denied permissions
-  String deniedList = deniedPermissions.map((p) {
-    switch (p) {
-      case Permission.location:
-        return 'Location';
-      case Permission.camera:
-        return 'Camera';
-      case Permission.photos:
-        return 'Photos';
-      case Permission.storage:
-        return 'Storage';
-      default:
-        return p.toString();
-    }
-  }).join(', ');
-
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Permissions Required'),
-      content: Text(
-        'The following permissions are required to work properly: $deniedList',
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Permissions Required'),
+        content: Text(
+          'The following permissions are required to work properly: $deniedList',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              openAppSettings();
+              Navigator.pop(context);
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () {
-            openAppSettings();
-            Navigator.pop(context);
-          },
-          child: const Text('Open Settings'),
-        ),
-      ],
-    ),
-  );
-}
+    );
+  }
 
   @override
   void dispose() {
@@ -153,17 +156,30 @@ void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
         ),
       );
 
-      // ✅ Navigate to OTP verification page
+      // Navigate to OTP verification page
       Navigator.pushNamed(
         context,
         '/otp',
-        arguments: {
-          'phone': phone,
-          'countryCode': _selectedCountryCode,
-        },
+        arguments: {'phone': phone, 'countryCode': _selectedCountryCode},
       );
     } on ApiException catch (e) {
-      _showErrorDialog(e.message);
+      // ✅ Extract and show details from the error
+      String errorMessage = 'Something went wrong';
+
+      // If error contains details array, show those instead
+      if (errorMessage.contains('details')) {
+        try {
+          final regex = RegExp(r'"details":\[(.*?)\]');
+          final match = regex.firstMatch(errorMessage);
+          if (match != null) {
+            String details = match.group(1) ?? '';
+            details = details.replaceAll('"', '').replaceAll(',', '\n• ');
+            errorMessage = '• $details';
+          }
+        } catch (_) {}
+      }
+
+      _showErrorDialog(errorMessage);
     } catch (e) {
       _showErrorDialog('Failed to send OTP. Please try again.');
     } finally {
@@ -181,10 +197,10 @@ void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
       return;
     }
 
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
-      _showErrorDialog('Please enter a valid email address');
-      return;
-    }
+    // if (!RegExp(r'^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}\$').hasMatch(email)) {
+    //   _showErrorDialog('Please enter a valid email address');
+    //   return;
+    // }
 
     setState(() => _isLoading = true);
 
@@ -193,6 +209,8 @@ void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
         email: email,
         password: password,
       );
+
+      print('✅ Login completed successfully');
 
       if (!mounted) return;
 
@@ -211,8 +229,32 @@ void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
         (route) => false,
       );
     } on ApiException catch (e) {
-      _showErrorDialog(e.message);
+      print('⚠️ API Error: ${e.message}');
+
+      // 👇 Try to parse the raw API response to show "details" message
+      String errorMessage = e.message;
+      try {
+        // Parse the JSON string from e.message if it contains full response
+        final RegExp jsonFinder = RegExp(r'\{.*\}');
+        final match = jsonFinder.firstMatch(e.message);
+        if (match != null) {
+          final jsonString = match.group(0)!;
+          final Map<String, dynamic> errorData = jsonDecode(jsonString);
+
+          if (errorData.containsKey('details') &&
+              errorData['details'] is List) {
+            errorMessage = errorData['details'].join('\n');
+          } else if (errorData.containsKey('details')) {
+            errorMessage = errorData['details'];
+          }
+        }
+      } catch (_) {
+        // If parsing fails, keep default message
+      }
+
+      _showErrorDialog("something went wrong");
     } catch (e) {
+      print('❌ Unexpected error: $e');
       _showErrorDialog('An unexpected error occurred. Please try again.');
     } finally {
       setState(() => _isLoading = false);
@@ -296,10 +338,7 @@ void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
                     height: 360,
                     child: TabBarView(
                       controller: _tabController,
-                      children: [
-                        _buildPhoneLoginTab(),
-                        _buildEmailLoginTab(),
-                      ],
+                      children: [_buildPhoneLoginTab(), _buildEmailLoginTab()],
                     ),
                   ),
                 ],
@@ -310,8 +349,9 @@ void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
                 color: Colors.black.withOpacity(0.3),
                 child: const Center(
                   child: CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
                   ),
                 ),
               ),
@@ -340,16 +380,18 @@ void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
                   value: _selectedCountryCode,
                   underline: const SizedBox(),
                   items: ['+1', '+91', '+44', '+61']
-                      .map((code) => DropdownMenuItem(
-                            value: code,
-                            child: Text(
-                              code,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
+                      .map(
+                        (code) => DropdownMenuItem(
+                          value: code,
+                          child: Text(
+                            code,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ))
+                          ),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     setState(() {
@@ -490,8 +532,6 @@ void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
     );
   }
 }
-
-
 
 // import 'package:flutter/gestures.dart';
 // import 'package:flutter/material.dart';

@@ -3,6 +3,8 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // Add Google Services plugin here (instead of apply plugin:)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -22,7 +24,7 @@ android {
     defaultConfig {
         applicationId = "com.example.zenzio_customer"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion    
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -34,9 +36,6 @@ android {
     }
 }
 
-
 flutter {
     source = "../.."
 }
-
-apply plugin: 'com.google.gms.google-services'
