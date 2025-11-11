@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "363790421789",
+    "project_id": "zenziocustomerapp",
+    "storage_bucket": "zenziocustomerapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:363790421789:android:56fe0a99954c0510569bf4",
+        "android_client_info": {
+          "package_name": "com.example.zenzio_customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgyi3kWphzLnTR5RveVJChs8XizKw5-YM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

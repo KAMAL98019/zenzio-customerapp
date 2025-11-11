@@ -43,6 +43,69 @@ class AuthService {
     return emailRegex.hasMatch(input);
   }
 
+
+  // ==================== REGISTER ====================
+  Future<RegisterResponse> register({
+    required String email,
+    required String password,
+    required String name,
+    String? phone,
+    required String countryCode,
+  }) async {
+    try {
+      final body = {
+        'name': name,
+        'email': email,
+        'password': password,
+        'mobile': phone ?? '',
+      };
+
+      final response = await _apiService.post(
+        ApiConfig.signupEndpoint,
+        body: body,
+        requiresAuth: false,
+      );
+
+      final registerResponse = RegisterResponse.fromJson(response);
+      _currentUser = registerResponse.user;
+
+      // ✅ Save token securely
+      final token = response['token'] ?? response['data']?['token'];
+      if (token != null && token.toString().isNotEmpty) {
+        await storage.write(key: 'auth_token', value: token.toString());
+        print('🔐 Token saved securely');
+      }
+
+      await storage.write(
+          key: 'user_data', value: jsonEncode(_currentUser!.toJson()));
+
+      return registerResponse;
+    } catch (e) {
+      print('❌ Register error: $e');
+      rethrow;
+    }
+  }
+
+Future<void> sendEmailVerification() async {
+  try {
+    final response = await _apiService.post(
+      ApiConfig.firebaseSendVerificationEndpoint,
+      body: {}, // no body needed
+      requiresAuth: true, // user must be logged in
+    );
+
+    if (response['success'] == true || response['status'] == 201) {
+      print('📩 Verification email sent successfully');
+    } else {
+      print('⚠️ Failed to send verification email: ${response['message']}');
+    }
+  } catch (e) {
+    print('❌ Error sending verification email: $e');
+  }
+}
+
+
+
   // ==================== LOGIN ====================
   Future<LoginResponse> loginWithEmail({
     required String email,
@@ -313,47 +376,6 @@ Future<Map<String, dynamic>> verifyForgotPasswordOTP({
 
 
 
-  // ==================== REGISTER ====================
-  Future<RegisterResponse> register({
-    required String email,
-    required String password,
-    required String name,
-    String? phone,
-    required String countryCode,
-  }) async {
-    try {
-      final body = {
-        'name': name,
-        'email': email,
-        'password': password,
-        'mobile': phone ?? '',
-      };
-
-      final response = await _apiService.post(
-        ApiConfig.signupEndpoint,
-        body: body,
-        requiresAuth: false,
-      );
-
-      final registerResponse = RegisterResponse.fromJson(response);
-      _currentUser = registerResponse.user;
-
-      // ✅ Save token securely
-      final token = response['token'] ?? response['data']?['token'];
-      if (token != null && token.toString().isNotEmpty) {
-        await storage.write(key: 'auth_token', value: token.toString());
-        print('🔐 Token saved securely');
-      }
-
-      await storage.write(
-          key: 'user_data', value: jsonEncode(_currentUser!.toJson()));
-
-      return registerResponse;
-    } catch (e) {
-      print('❌ Register error: $e');
-      rethrow;
-    }
-  }
 
   // ==================== GET USER PROFILE ====================
   Future<User> getUserProfile() async {

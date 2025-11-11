@@ -22,7 +22,7 @@ android {
     defaultConfig {
         applicationId = "com.example.zenzio_customer"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = flutter.targetSdkVersion    
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -38,3 +38,5 @@ android {
 flutter {
     source = "../.."
 }
+
+apply plugin: 'com.google.gms.google-services'

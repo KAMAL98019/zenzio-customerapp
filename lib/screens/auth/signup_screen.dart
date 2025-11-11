@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:zenzio_customer/screens/auth/VerifyEmailScreen.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../core/constants/app_colors.dart';
@@ -108,7 +109,14 @@ class _SignupScreenState extends State<SignupScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pushReplacementNamed(context, '/');
+        // Navigator.pushReplacementNamed(context, '/');
+        Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (_) => VerifyEmailScreen(email: _emailController.text),
+  ),
+);
+
       }
     } on ApiException catch (e) {
       setState(() => _isLoading = false);

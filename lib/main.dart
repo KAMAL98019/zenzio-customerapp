@@ -1,4 +1,6 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:zenzio_customer/screens/auth/VerifyEmailScreen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/otp_verify_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -35,7 +37,7 @@ import 'services/auth_service.dart';
 // ✅ Initialize auth service before app starts
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+    await Firebase.initializeApp();
   // Initialize auth service to load token
   await AuthService().initialize();
   
@@ -65,6 +67,7 @@ class ZenzioApp extends StatelessWidget {
         '/': (context) => const LoginScreen(),
         '/otp': (context) => const OTPVerifyScreen(),
         '/signup': (context) => const SignupScreen(),
+        // '/register-otp-verify': (context) => const RegisterOTPVerifyScreen(),
         '/forgot-password': (context) => const ForgotPasswordScreen(),
         '/forgot-otp': (context) => const ForgotPasswordOTPScreen(),
         '/reset-password': (context) => const ResetPasswordScreen(),
