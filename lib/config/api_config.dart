@@ -12,12 +12,12 @@ class ApiConfig {
 
 
   // ==================== AUTH ENDPOINTS ====================
-  // static const String signupEndpoint = '/users';
   // Existing endpoints ...
   static const String signupEndpoint = "/users/auth/signup/email";
   static const String loginEndpoint = "/users/auth/login/email";
 
   static const String firebaseSendVerificationEndpoint = "/firebase/send-verification";
+  static const String userProfileEndpoint = '$apiVersion/users/firebase-profile';
 
   // static const String loginEndpoint = '$apiVersion/users/auth/login';
   // static const String signupEndpoint = '$apiVersion/users';
@@ -32,7 +32,7 @@ class ApiConfig {
 
   // ==================== USER ENDPOINTS ====================
   static const String usersEndpoint = '$apiVersion/users';
-  static const String userProfileEndpoint = '$apiVersion/users/me';
+  // static const String userProfileEndpoint = '$apiVersion/users/me';
   static const String updateProfileEndpoint = '$apiVersion/users/{userId}';
   
   // ==================== RESTAURANT ENDPOINTS ====================

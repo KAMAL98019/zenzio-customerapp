@@ -134,6 +134,26 @@ class AuthService {
     }
   }
 
+
+  // Future<void> sendEmailVerification() async {
+  //   try {
+  //     final response = await _apiService.post(
+  //       ApiConfig.firebaseSendVerificationEndpoint,
+  //       body: {}, // no body needed
+  //       requiresAuth: true, // user must be logged in
+  //     );
+
+  //     if (response['success'] == true || response['status'] == 201) {
+  //       print('📩 Verification email sent successfully');
+  //     } else {
+  //       print('⚠️ Failed to send verification email: ${response['message']}');
+  //     }
+  //   } catch (e) {
+  //     print('❌ Error sending verification email: $e');
+  //   }
+  // }
+
+
   Future<void> sendEmailVerification() async {
     try {
       final response = await _apiService.post(

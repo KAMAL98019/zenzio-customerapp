@@ -247,12 +247,14 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
                           keyboardType: TextInputType.number,
                           maxLength: 1,
                           style: const TextStyle(
-                            fontSize: 24,
+                            fontSize: 22,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF2D2D2D),
+                            height: 1.2,
                           ),
                           decoration: InputDecoration(
                             counterText: '',
+                            contentPadding: EdgeInsets.only(bottom: 8),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(10),
                               borderSide: const BorderSide(

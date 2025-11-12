@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/api_service.dart';
 import '../auth/login_screen.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
@@ -10,9 +11,38 @@ class VerifyEmailScreen extends StatefulWidget {
 }
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
-  @override
-  void initState() {
-    super.initState();
+  bool _isVerified = false;
+  bool _isLoading = false;
+
+  Future<void> _verifyEmail() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Call your backend endpoint (Firebase sends verification)
+      final response = await ApiService().post(
+        "/firebase/send-verification",
+        body: {},
+        requiresAuth: true,
+      );
+
+      if (response['success'] == true || response['status'] == 201) {
+        // Simulate verification success (in real flow, this happens after clicking email link)
+        await Future.delayed(const Duration(seconds: 2));
+        setState(() {
+          _isVerified = true;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: ${response['message']}')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending verification: $e')),
+      );
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -38,27 +68,32 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Success Icon
+              // Icon changes based on verification state
               Container(
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: _isVerified
+                      ? Colors.green.shade50
+                      : Colors.orange.shade50,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.check_circle,
+                  _isVerified ? Icons.check_circle : Icons.email_outlined,
                   size: 60,
-                  color: Colors.green.shade600,
+                  color:
+                      _isVerified ? Colors.green.shade600 : Colors.orangeAccent,
                 ),
               ),
               const SizedBox(height: 32),
 
-              // Title
-              const Text(
-                'Account Created Successfully!',
+              // Title changes based on state
+              Text(
+                _isVerified
+                    ? 'Account Verified Successfully!'
+                    : 'Please Verify Your Email',
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
                   color: Color(0xFF2D2D2D),
@@ -68,7 +103,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
               // Message
               Text(
-                'Your account has been created with\n${widget.email}',
+                _isVerified
+                    ? 'Your account has been verified for\n${widget.email}'
+                    : 'We have sent a verification email to\n${widget.email}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 15,
@@ -76,10 +113,41 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                   height: 1.5,
                 ),
               ),
-              
               const SizedBox(height: 40),
 
-              // Manual Navigation Button
+              // Verify Email Button (always visible)
+              ElevatedButton(
+                onPressed: _isLoading ? null : _verifyEmail,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE53935),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Verify Email',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Go to Login Now button (always below)
               TextButton(
                 onPressed: () {
                   Navigator.pushReplacement(
@@ -103,3 +171,176 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     );
   }
 }
+
+
+// import 'package:flutter/material.dart';
+// import '../../services/api_service.dart';
+// import '../auth/login_screen.dart';
+
+// class VerifyEmailScreen extends StatefulWidget {
+//   final String email;
+//   const VerifyEmailScreen({super.key, required this.email});
+
+//   @override
+//   State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
+// }
+
+// class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
+//   bool _isVerified = false;
+//   bool _isLoading = false;
+
+//   Future<void> _verifyEmail() async {
+//     setState(() => _isLoading = true);
+
+//     try {
+//       // Call your backend endpoint (Firebase sends verification)
+//       final response = await ApiService().post(
+//         "/firebase/send-verification",
+//         body: {},
+//         requiresAuth: true,
+//       );
+
+//       if (response['success'] == true || response['status'] == 201) {
+//         // Simulate verification success (in real flow, this happens after clicking email link)
+//         await Future.delayed(const Duration(seconds: 2));
+//         setState(() {
+//           _isVerified = true;
+//         });
+//       } else {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(content: Text('Failed: ${response['message']}')),
+//         );
+//       }
+//     } catch (e) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('Error sending verification: $e')),
+//       );
+//     } finally {
+//       setState(() => _isLoading = false);
+//     }
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: const Color(0xFFFAFAFA),
+//       appBar: AppBar(
+//         backgroundColor: Colors.transparent,
+//         elevation: 0,
+//         title: const Text(
+//           'Zenzio',
+//           style: TextStyle(
+//             color: Color(0xFFE53935),
+//             fontSize: 16,
+//             fontWeight: FontWeight.w600,
+//           ),
+//         ),
+//         centerTitle: true,
+//       ),
+//       body: Padding(
+//         padding: const EdgeInsets.all(24),
+//         child: Center(
+//           child: Column(
+//             mainAxisAlignment: MainAxisAlignment.center,
+//             children: [
+//               // Icon changes based on verification state
+//               Container(
+//                 width: 100,
+//                 height: 100,
+//                 decoration: BoxDecoration(
+//                   color: _isVerified
+//                       ? Colors.green.shade50
+//                       : Colors.orange.shade50,
+//                   shape: BoxShape.circle,
+//                 ),
+//                 child: Icon(
+//                   _isVerified ? Icons.check_circle : Icons.email_outlined,
+//                   size: 60,
+//                   color:
+//                       _isVerified ? Colors.green.shade600 : Colors.orangeAccent,
+//                 ),
+//               ),
+//               const SizedBox(height: 32),
+
+//               // Title changes based on state
+//               Text(
+//                 _isVerified
+//                     ? 'Account Verified Successfully!'
+//                     : 'Please Verify Your Email',
+//                 textAlign: TextAlign.center,
+//                 style: const TextStyle(
+//                   fontSize: 22,
+//                   fontWeight: FontWeight.w600,
+//                   color: Color(0xFF2D2D2D),
+//                 ),
+//               ),
+//               const SizedBox(height: 16),
+
+//               // Message
+//               Text(
+//                 _isVerified
+//                     ? 'Your account has been verified for\n${widget.email}'
+//                     : 'We have sent a verification email to\n${widget.email}',
+//                 textAlign: TextAlign.center,
+//                 style: const TextStyle(
+//                   fontSize: 15,
+//                   color: Color(0xFF757575),
+//                   height: 1.5,
+//                 ),
+//               ),
+//               const SizedBox(height: 40),
+
+//               // Conditional Button
+//               _isVerified
+//                   ? TextButton(
+//                       onPressed: () {
+//                         Navigator.pushReplacement(
+//                           context,
+//                           MaterialPageRoute(
+//                               builder: (_) => const LoginScreen()),
+//                         );
+//                       },
+//                       child: const Text(
+//                         'Go to Login Now',
+//                         style: TextStyle(
+//                           color: Color(0xFFE53935),
+//                           fontSize: 16,
+//                           fontWeight: FontWeight.w600,
+//                         ),
+//                       ),
+//                     )
+//                   : ElevatedButton(
+//                       onPressed: _isLoading ? null : _verifyEmail,
+//                       style: ElevatedButton.styleFrom(
+//                         backgroundColor: const Color(0xFFE53935),
+//                         shape: RoundedRectangleBorder(
+//                           borderRadius: BorderRadius.circular(12),
+//                         ),
+//                         padding: const EdgeInsets.symmetric(
+//                             horizontal: 40, vertical: 14),
+//                       ),
+//                       child: _isLoading
+//                           ? const SizedBox(
+//                               height: 20,
+//                               width: 20,
+//                               child: CircularProgressIndicator(
+//                                 color: Colors.white,
+//                                 strokeWidth: 2,
+//                               ),
+//                             )
+//                           : const Text(
+//                               'Verify Email',
+//                               style: TextStyle(
+//                                 color: Colors.white,
+//                                 fontSize: 16,
+//                                 fontWeight: FontWeight.w600,
+//                               ),
+//                             ),
+//                     ),
+//             ],
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+// }

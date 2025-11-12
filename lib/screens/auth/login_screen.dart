@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen>
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
-  String _selectedCountryCode = '+91'; // Default for India 🇮🇳
+  String _selectedCountryCode = '+91';
   bool _isLoading = false;
 
   final AuthService _authService = AuthService();
@@ -38,35 +38,40 @@ class _LoginScreenState extends State<LoginScreen>
     });
   }
 
-  Future<void> _requestAppPermissions() async {
-    List<Permission> permissions = [
-      Permission.location,
-      Permission.camera,
-      Permission.photos,
-      Permission.storage,
-    ];
+ Future<void> _requestAppPermissions() async {
+  // List of all permissions you need
+  List<Permission> permissions = [
+    Permission.location,
+    Permission.camera,
+    Permission.photos,
+    Permission.storage,
+  ];
 
-    List<Permission> toRequest = [];
-
-    for (var permission in permissions) {
-      if (!await permission.isGranted) {
-        toRequest.add(permission);
-      }
-    }
-
-    if (toRequest.isNotEmpty) {
-      Map<Permission, PermissionStatus> statuses = await toRequest.request();
-
-      final denied = statuses.entries
-          .where((entry) => !entry.value.isGranted)
-          .map((entry) => entry.key)
-          .toList();
-
-      if (denied.isNotEmpty) {
-        _showPermissionDeniedDialog(denied);
-      }
+  // Filter out permissions that are not yet granted
+  List<Permission> toRequest = [];
+  for (var permission in permissions) {
+    if (!await permission.isGranted) {
+      toRequest.add(permission);
     }
   }
+
+  // Request only if there are ungranted permissions
+  if (toRequest.isNotEmpty) {
+    Map<Permission, PermissionStatus> statuses = await toRequest.request();
+
+    // Identify which ones are denied *after* requesting
+    final newlyDenied = statuses.entries
+        .where((entry) => entry.value.isDenied || entry.value.isPermanentlyDenied)
+        .map((entry) => entry.key)
+        .toList();
+
+    // Show dialog only if user *just denied* permissions
+    if (newlyDenied.isNotEmpty) {
+      _showPermissionDeniedDialog(newlyDenied);
+    }
+  }
+}
+
 
   Future<Map<Permission, PermissionStatus>> _requestPermissions() async {
     Map<Permission, PermissionStatus> statuses = await [
