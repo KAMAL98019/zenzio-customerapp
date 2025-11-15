@@ -39,7 +39,6 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
  Future<void> _requestAppPermissions() async {
-  // List of all permissions you need
   List<Permission> permissions = [
     Permission.location,
     Permission.camera,
@@ -47,7 +46,6 @@ class _LoginScreenState extends State<LoginScreen>
     Permission.storage,
   ];
 
-  // Filter out permissions that are not yet granted
   List<Permission> toRequest = [];
   for (var permission in permissions) {
     if (!await permission.isGranted) {
@@ -55,17 +53,14 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  // Request only if there are ungranted permissions
   if (toRequest.isNotEmpty) {
     Map<Permission, PermissionStatus> statuses = await toRequest.request();
 
-    // Identify which ones are denied *after* requesting
     final newlyDenied = statuses.entries
         .where((entry) => entry.value.isDenied || entry.value.isPermanentlyDenied)
         .map((entry) => entry.key)
         .toList();
 
-    // Show dialog only if user *just denied* permissions
     if (newlyDenied.isNotEmpty) {
       _showPermissionDeniedDialog(newlyDenied);
     }
@@ -73,16 +68,16 @@ class _LoginScreenState extends State<LoginScreen>
 }
 
 
-  Future<Map<Permission, PermissionStatus>> _requestPermissions() async {
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.location,
-      Permission.camera,
-      Permission.photos,
-      Permission.storage,
-    ].request();
+  // Future<Map<Permission, PermissionStatus>> _requestPermissions() async {
+  //   Map<Permission, PermissionStatus> statuses = await [
+  //     Permission.location,
+  //     Permission.camera,
+  //     Permission.photos,
+  //     Permission.storage,
+  //   ].request();
 
-    return statuses;
-  }
+  //   return statuses;
+  // }
 
   void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
     // Build a friendly message listing only denied permissions

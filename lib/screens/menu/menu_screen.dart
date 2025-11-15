@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:zenzio_customer/config/api_config.dart';
+import 'package:zenzio_customer/services/api_service.dart';
+import 'package:zenzio_customer/services/auth_service.dart';
 import '../../data/models/food_item.dart';
 import '../../data/models/cart_model.dart';
 import '../../services/cart_service.dart';
@@ -33,50 +36,141 @@ class _MenuScreenState extends State<MenuScreen> {
 
  Future<void> fetchFoodItems() async {
   try {
-    final response =
-        await http.get(Uri.parse('https://backend.zenzio.in/api/food-items'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      if (data['success'] == true && data['data'] is List) {
-        final List<dynamic> foodData = data['data'];
-        final items = foodData
-            .map<FoodItem>((e) => FoodItem.fromJson(e as Map<String, dynamic>))
-            .toList();
+    // ✅ Check if user is logged in first
+    final authService = AuthService();
+    final hasToken = await authService.hasValidToken();
+    
+    if (!hasToken) {
+      debugPrint('❌ No auth token found. User must login first.');
+      // Show login dialog or navigate to login
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please log in to view menu items'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        // Optionally navigate to login
+        // Navigator.pushReplacementNamed(context, '/login');
+      }
+      return;
+    }
 
-        // ✅ Remove duplicates + empty + trim spaces
-        final cuisineSet = <String>{};
-        final categorySet = <String>{};
+    setState(() => _isLoading = true);
 
-        for (var item in items) {
-          final c = item.cuisine?.trim();
-          final cat = item.category?.trim();
-          if (c != null && c.isNotEmpty) cuisineSet.add(c);
-          if (cat != null && cat.isNotEmpty) categorySet.add(cat);
-        }
+    final api = ApiService();
+    final response = await api.get(
+      '/api/food-items',
+      requiresAuth: true,
+    );
 
-        final sortedCuisine = ['All', ...cuisineSet.toList()..sort()];
-        final sortedCategory = ['All', ...categorySet.toList()..sort()];
+    debugPrint('📥 Food items response: $response');
 
-        setState(() {
-          _foodItems = items;
-          cuisines = sortedCuisine;
-          categories = sortedCategory;
-          _isLoading = false;
+    if (response['success'] == true && response['data'] is List) {
+      final List<dynamic> foodData = response['data'];
 
-          // ✅ Ensure selected values are valid
-          if (!cuisines.contains(selectedCuisine)) selectedCuisine = 'All';
-          if (!categories.contains(selectedCategory)) selectedCategory = 'All';
-        });
-        return;
+      final items = foodData
+          .map<FoodItem>((e) => FoodItem.fromJson(e))
+          .toList();
+
+      final cuisineSet = <String>{};
+      final categorySet = <String>{};
+
+      for (var item in items) {
+        final c = item.cuisine?.trim();
+        final cat = item.category?.trim();
+        if (c != null && c.isNotEmpty) cuisineSet.add(c);
+        if (cat != null && cat.isNotEmpty) categorySet.add(cat);
+      }
+
+      setState(() {
+        _foodItems = items;
+        cuisines = ['All', ...cuisineSet.toList()..sort()];
+        categories = ['All', ...categorySet.toList()..sort()];
+        _isLoading = false;
+      });
+
+      debugPrint('✅ Loaded ${items.length} food items');
+      return;
+    }
+    
+    throw Exception('Invalid response format');
+    
+  } on ApiException catch (e) {
+    debugPrint('❌ API Error fetching food items: ${e.message}');
+    if (e.statusCode == 401) {
+      // Token expired or invalid
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session expired. Please log in again.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        // Clear invalid token
+        await AuthService().logout();
+        // Navigate to login
+        Navigator.pushReplacementNamed(context, '/login');
       }
     }
-    throw Exception('Failed to load food items (status: ${response.statusCode})');
+    setState(() => _isLoading = false);
   } catch (e) {
     debugPrint('❌ Error fetching food items: $e');
-    if (!mounted) return;
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
     setState(() => _isLoading = false);
   }
 }
+
+//  Future<void> fetchFoodItems() async {
+//   try {
+//     final response =
+//         await http.get(Uri.parse('https://backend.zenzio.in/api/food-items'));
+//     if (response.statusCode == 200) {
+//       final data = json.decode(response.body) as Map<String, dynamic>;
+//       if (data['success'] == true && data['data'] is List) {
+//         final List<dynamic> foodData = data['data'];
+//         final items = foodData
+//             .map<FoodItem>((e) => FoodItem.fromJson(e as Map<String, dynamic>))
+//             .toList();
+
+//         // ✅ Remove duplicates + empty + trim spaces
+//         final cuisineSet = <String>{};
+//         final categorySet = <String>{};
+
+//         for (var item in items) {
+//           final c = item.cuisine?.trim();
+//           final cat = item.category?.trim();
+//           if (c != null && c.isNotEmpty) cuisineSet.add(c);
+//           if (cat != null && cat.isNotEmpty) categorySet.add(cat);
+//         }
+
+//         final sortedCuisine = ['All', ...cuisineSet.toList()..sort()];
+//         final sortedCategory = ['All', ...categorySet.toList()..sort()];
+
+//         setState(() {
+//           _foodItems = items;
+//           cuisines = sortedCuisine;
+//           categories = sortedCategory;
+//           _isLoading = false;
+
+//           // ✅ Ensure selected values are valid
+//           if (!cuisines.contains(selectedCuisine)) selectedCuisine = 'All';
+//           if (!categories.contains(selectedCategory)) selectedCategory = 'All';
+//         });
+//         return;
+//       }
+//     }
+//     throw Exception('Failed to load food items (status: ${response.statusCode})');
+//   } catch (e) {
+//     debugPrint('❌ Error fetching food items: $e');
+//     if (!mounted) return;
+//     setState(() => _isLoading = false);
+//   }
+// }
 
   List<FoodItem> _applyFilters(List<FoodItem> foods) {
     return foods.where((food) {

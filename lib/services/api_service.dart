@@ -82,72 +82,181 @@ class ApiService {
     }
   }
 
+
+Future<dynamic> get(
+  String endpoint, {
+  bool requiresAuth = false,
+}) async {
+  try {
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+    print('🌐 GET: $uri');
+    print('📤 Headers: $headers');
+
+    final response = await http
+        .get(uri, headers: headers)
+        .timeout(ApiConfig.connectTimeout);
+
+    print('📥 Response Status: ${response.statusCode}');
+    return _handleResponse(response);
+  } catch (e) {
+    print('❌ GET error: $e');
+    throw ApiException('GET request failed: $e');
+  }
+}
+
+// ==================== POST ====================
+Future<dynamic> post(
+  String endpoint, {
+  required Map<String, dynamic> body,
+  bool requiresAuth = false,
+}) async {
+  try {
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+    
+    // Add additional headers specific to POST
+    headers['platform'] = 'Android';
+    headers['User-Agent'] = 'Android';
+    headers['mode'] = 'development';
+    headers['clientId'] = ApiConfig.clientId;
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+
+    print('🌐 POST: $uri');
+    print('📤 Headers: $headers');
+    print('📦 Body: ${jsonEncode(body)}');
+
+    final response = await http
+        .post(
+          uri,
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(ApiConfig.connectTimeout);
+
+    print('📥 Response Status: ${response.statusCode}');
+    print('📥 Response Body: ${response.body}');
+
+    return await _handleResponse(response);
+  } catch (e) {
+    print('❌ POST error: $e');
+    throw ApiException('POST request failed: $e');
+  }
+}
+
+// ==================== MULTIPART ====================
+Future<dynamic> multipartRequest(
+  String endpoint, {
+  required String method,
+  required Map<String, String> fields,
+  required Map<String, File> files,
+  bool requiresAuth = false,
+}) async {
+  try {
+    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+    final request = http.MultipartRequest(method, uri);
+
+    // ✅ Get headers with token if required
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+    request.headers.addAll(headers);
+
+    fields.forEach((key, value) => request.fields[key] = value);
+    
+    for (final entry in files.entries) {
+      request.files.add(
+        await http.MultipartFile.fromPath(entry.key, entry.value.path),
+      );
+    }
+
+    print('🌐 MULTIPART $method: $uri');
+    print('📤 Headers: ${request.headers}');
+
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+
+    print('📥 Response Status: ${response.statusCode}');
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(responseBody);
+    } else {
+      throw ApiException(
+        'Upload failed: ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
+    }
+  } catch (e) {
+    print('❌ Multipart error: $e');
+    throw ApiException('Multipart request failed: $e');
+  }
+}
+
   // ==================== GET ====================
-  Future<dynamic> get(
-    String endpoint, {
-    bool requiresAuth = false,
-    String? token, // 👈 add this line
-  }) async {
-    try {
-      final headers = {
-        'Content-Type': 'application/json',
-        if (requiresAuth && token != null) 'Authorization': 'Bearer $token',
-      };
+  // Future<dynamic> get(
+  //   String endpoint, {
+  //   bool requiresAuth = false,
+  //   String? token, // 👈 add this line
+  // }) async {
+  //   try {
+  //     final headers = {
+  //       'Content-Type': 'application/json',
+  //       if (requiresAuth && token != null) 'Authorization': 'Bearer $token',
+  //     };
 
-      final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}$endpoint'),
-        headers: headers,
-      );
+  //     final response = await http.get(
+  //       Uri.parse('${ApiConfig.baseUrl}$endpoint'),
+  //       headers: headers,
+  //     );
 
-      return _handleResponse(response);
-    } catch (e) {
-      throw Exception('GET request failed: $e');
-    }
-  }
+  //     return _handleResponse(response);
+  //   } catch (e) {
+  //     throw Exception('GET request failed: $e');
+  //   }
+  // }
 
-  // ==================== POST ====================
-  Future<dynamic> post(
-    String endpoint, {
-    required Map<String, dynamic> body,
-    bool requiresAuth = false,
-    String? token,
-  }) async {
-    try {
-      // ✅ Add headers
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'platform': 'Android',
-        'User-Agent': 'Android', // 👈 add this line
-        'mode': "development",
+  // // ==================== POST ====================
+  // Future<dynamic> post(
+  //   String endpoint, {
+  //   required Map<String, dynamic> body,
+  //   bool requiresAuth = false,
+  //   String? token,
+  // }) async {
+  //   try {
+  //     // ✅ Add headers
+  //     final headers = {
+  //       'Content-Type': 'application/json',
+  //       'Accept': 'application/json',
+  //       'platform': 'Android',
+  //       'User-Agent': 'Android', // 👈 add this line
+  //       'mode': "development",
 
-        'clientId': ApiConfig.clientId,
+  //       'clientId': ApiConfig.clientId,
 
-        // 'client-secret': ApiConfig.clientSecret, // temporarily disabled
-        if (requiresAuth && token != null) 'Authorization': 'Bearer $token',
-      };
+  //       // 'client-secret': ApiConfig.clientSecret, // temporarily disabled
+  //       if (requiresAuth && token != null) 'Authorization': 'Bearer $token',
+  //     };
 
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+  //     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
 
-      print('🌐 POST: $uri');
-      print('📤 Headers: $headers');
-      print('📦 Body: ${jsonEncode(body)}');
+  //     print('🌐 POST: $uri');
+  //     print('📤 Headers: $headers');
+  //     print('📦 Body: ${jsonEncode(body)}');
 
-      final response = await http.post(
-        uri,
-        headers: headers,
-        body: jsonEncode(body),
-      );
+  //     final response = await http.post(
+  //       uri,
+  //       headers: headers,
+  //       body: jsonEncode(body),
+  //     );
 
-      print('📥 Response Status: ${response.statusCode}');
-      print('📥 Response Body: ${response.body}');
+  //     print('📥 Response Status: ${response.statusCode}');
+  //     print('📥 Response Body: ${response.body}');
 
-      return await _handleResponse(response);
-    } catch (e) {
-      print('❌ POST error: $e');
-      throw ApiException('request failed: $e');
-    }
-  }
+  //     return await _handleResponse(response);
+  //   } catch (e) {
+  //     print('❌ POST error: $e');
+  //     throw ApiException('request failed: $e');
+  //   }
+  // }
 
   // ==================== PUT ====================
   Future<dynamic> put(
@@ -175,43 +284,43 @@ class ApiService {
     }
   }
 
-  // ==================== MULTIPART ====================
-  Future<dynamic> multipartRequest(
-    String endpoint, {
-    required String method,
-    required Map<String, String> fields,
-    required Map<String, File> files,
-    bool requiresAuth = false,
-    String? token, // 👈 add this
-  }) async {
-    try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final request = http.MultipartRequest(method, uri);
+  // // ==================== MULTIPART ====================
+  // Future<dynamic> multipartRequest(
+  //   String endpoint, {
+  //   required String method,
+  //   required Map<String, String> fields,
+  //   required Map<String, File> files,
+  //   bool requiresAuth = false,
+  //   String? token, // 👈 add this
+  // }) async {
+  //   try {
+  //     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+  //     final request = http.MultipartRequest(method, uri);
 
-      // ✅ Add headers
-      if (requiresAuth && token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
-      }
+  //     // ✅ Add headers
+  //     if (requiresAuth && token != null) {
+  //       request.headers['Authorization'] = 'Bearer $token';
+  //     }
 
-      fields.forEach((key, value) => request.fields[key] = value);
-      for (final entry in files.entries) {
-        request.files.add(
-          await http.MultipartFile.fromPath(entry.key, entry.value.path),
-        );
-      }
+  //     fields.forEach((key, value) => request.fields[key] = value);
+  //     for (final entry in files.entries) {
+  //       request.files.add(
+  //         await http.MultipartFile.fromPath(entry.key, entry.value.path),
+  //       );
+  //     }
 
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
+  //     final response = await request.send();
+  //     final responseBody = await response.stream.bytesToString();
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return jsonDecode(responseBody);
-      } else {
-        throw Exception('Failed to upload file: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Multipart request failed: $e');
-    }
-  }
+  //     if (response.statusCode >= 200 && response.statusCode < 300) {
+  //       return jsonDecode(responseBody);
+  //     } else {
+  //       throw Exception('Failed to upload file: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     throw Exception('Multipart request failed: $e');
+  //   }
+  // }
 }
 
 // import 'dart:convert';

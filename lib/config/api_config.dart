@@ -7,28 +7,32 @@ class ApiConfig {
   static const String apiBaseUrl = '$baseUrl$apiVersion';
   
   // ✅ Use your actual values from /clients/generate
-  static const clientId = 'b8da45ba-2a7a-488b-9764-60016ed964a5';
+  // static const clientId = 'b8da45ba-2a7a-488b-9764-60016ed964a5';
+  static const clientId = '0fb4e7a0-8ca8-46a3-8ffe-0f4a078bb811';
   static const clientSecret = '';
 
 
-  // ==================== AUTH ENDPOINTS ====================
-  // Existing endpoints ...
+  // ==================== NEW AUTH ENDPOINTS ====================
   static const String signupEndpoint = "/users/auth/signup/email";
   static const String loginEndpoint = "/users/auth/login/email";
-
   static const String firebaseSendVerificationEndpoint = "/firebase/send-verification";
-  static const String userProfileEndpoint = '$apiVersion/users/firebase-profile';
-
-  // static const String loginEndpoint = '$apiVersion/users/auth/login';
-  // static const String signupEndpoint = '$apiVersion/users';
+  static const String userProfileEndpoint = '/users/me';
   static const String otpSendEndpoint = '/otp/send';
   static const String otpVerifyEndpoint = '/otp/verify';
+  
+  static const String foodItemsEndpoint = '$baseUrl/restaurant-menu';
+
+
+  // ==================== AUTH OLD ENDPOINTS ====================
+  // static const String loginEndpoint = '$apiVersion/users/auth/login';
+  // static const String signupEndpoint = '$apiVersion/users';
+  
   static const String forgotPasswordEndpoint = '$apiVersion/users/auth/forgot-password/send-otp';
   static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
   // static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
   static const String logoutEndpoint = '$apiVersion/auth/logout';
   
-  static const String foodItemsEndpoint = '$baseUrl/food-items';
+  // static const String foodItemsEndpoint = '$baseUrl/food-items';
 
   // ==================== USER ENDPOINTS ====================
   static const String usersEndpoint = '$apiVersion/users';

@@ -264,63 +264,119 @@ class AuthService {
       rethrow;
     }
   }
+Future<Map<String, dynamic>> verifyOTP({
+  required String phone,
+  required String countryCode,
+  required String otp,
+}) async {
+  try {
+    print('📦 Verifying OTP for $phone');
+
+    final response = await _apiService.post(
+      ApiConfig.otpVerifyEndpoint,
+      body: {'phone': phone, 'otp': otp},
+      requiresAuth: false,
+    );
+
+    print('📥 Raw Response: $response');
+
+    final int code = response['code'] ?? 0;
+    final bool isSuccess = code == 200;
+
+    if (!isSuccess) {
+      throw ApiException('Invalid OTP. Please try again.');
+    }
+
+    final data = response['data'] ?? {};
+
+    // ✅ Extract and save token
+    final token = response['token'];
+    if (token != null && token.toString().isNotEmpty) {
+      await storage.write(key: 'auth_token', value: token.toString());
+      print('🔐 auth_token saved');
+    }
+
+    // ✅ Extract and save user data
+    final userJson = data['user'] ?? {};
+    if (userJson.isNotEmpty) {
+      final user = User.fromJson(Map<String, dynamic>.from(userJson));
+      
+      // ✅ Set current user
+      _currentUser = user;
+      
+      // ✅ Save user data
+      await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
+      await storage.write(key: 'user_id', value: user.id?.toString() ?? '');
+      
+      print('👤 User logged in: ${user.name}');
+      print('🆔 User ID: ${user.id}');
+    }
+
+    print('✅ OTP verified and user logged in successfully');
+    return data;
+
+  } catch (e) {
+    print('❌ verifyOTP error: $e');
+    throw ApiException('Unable to verify OTP. Please try again.');
+  }
+}
 
   /// Verifies the OTP
-  Future<Map<String, dynamic>> verifyOTP({
-    required String phone,
-    required String countryCode,
-    required String otp,
-  }) async {
-    try {
-      print('📦 Verifying OTP for $phone');
+  // Future<Map<String, dynamic>> verifyOTP({
+  //   required String phone,
+  //   required String countryCode,
+  //   required String otp,
+  // }) async {
+  //   try {
+  //     print('📦 Verifying OTP for $phone');
 
-      final response = await _apiService.post(
-        ApiConfig.otpVerifyEndpoint,
-        body: {'phone': phone, 'otp': otp},
-        requiresAuth: false,
-      );
+  //     final response = await _apiService.post(
+  //       ApiConfig.otpVerifyEndpoint,
+  //       body: {'phone': phone, 'otp': otp},
+  //       requiresAuth: false,
+  //     );
 
-      print('📥 Response Status: ${response['statusCode'] ?? 'unknown'}');
-      print('📥 Response Body: $response');
+  //     print('📥 Response Status: ${response['statusCode'] ?? 'unknown'}');
+  //     print('📥 Response Body: $response');
 
-      final apiStatus = response['status'];
-      final statusCode = response['statusCode'] ?? 200;
-      final code = response['code'];
+  //     final apiStatus = response['status'];
+  //     final statusCode = response['statusCode'] ?? 200;
+  //     final code = response['code'];
 
-      if ((statusCode == 200 || statusCode == 201) &&
-          (apiStatus == 'success' || code == 200)) {
-        final data = response['data'] ?? response;
+  //     if ((statusCode == 200 || statusCode == 201) &&
+  //         (apiStatus == 'success' || code == 200)) {
+  //       final data = response['data'] ?? response;
 
-        // ✅ Extract token and user if present
-        final token = data['token'] ?? data['accessToken'];
-        final userJson = data['user'] ?? data['userDetails'] ?? {};
+  //       // ✅ Extract token and user if present
+  //       final token = data['token'] ?? data['accessToken'];
+  //       final userJson = data['user'] ?? data['userDetails'] ?? {};
 
-        if (token != null && token.toString().isNotEmpty) {
-          await storage.write(key: 'auth_token', value: token.toString());
-          print('🔐 auth_token saved');
-        }
+  //       if (token != null && token.toString().isNotEmpty) {
+  //         await storage.write(key: 'auth_token', value: token.toString());
+  //         print('🔐 auth_token saved');
+  //       }
 
-        if (userJson.isNotEmpty) {
-          final Map<String, dynamic> uj = Map<String, dynamic>.from(userJson);
-          if (uj['id'] != null) {
-            await storage.write(key: 'user_id', value: uj['id'].toString());
-          }
-          await storage.write(key: 'user_data', value: jsonEncode(uj));
-          print('👤 user_data saved');
-        }
+  //       if (userJson.isNotEmpty) {
+  //         final Map<String, dynamic> uj = Map<String, dynamic>.from(userJson);
+  //         if (uj['id'] != null) {
+  //           await storage.write(key: 'user_id', value: uj['id'].toString());
+  //         }
+  //         await storage.write(key: 'user_data', value: jsonEncode(uj));
+  //         print('👤 user_data saved');
+  //       }
 
-        print('✅ OTP verified successfully');
-        return data;
-      } else {
-        throw ApiException(
-          response['message'] ?? 'Invalid OTP. Please try again.',
-        );
-      }
-    } catch (e) {
-      print('❌ verifyOTP error: $e');
-      throw ApiException('Unable to verify OTP. Please try again.');
-    }
-  }
+  //       print('✅ OTP verified successfully');
+  //       return data;
+  //     } else {
+  //       throw ApiException(
+  //         response['message'] ?? 'Invalid OTP. Please try again.',
+  //       );
+  //     }
+  //   } catch (e) {
+  //     print('❌ verifyOTP error: $e');
+  //     throw ApiException('Unable to verify OTP. Please try again.');
+  //   }
+  // }
 
   /// Wrapper around existing sendOTP to use for resending.
   /// Returns backend response map.
@@ -555,4 +611,6 @@ class AuthService {
     _currentUser = null;
     print('🚪 Logged out successfully');
   }
+
+  Future hasValidToken() async {}
 }
