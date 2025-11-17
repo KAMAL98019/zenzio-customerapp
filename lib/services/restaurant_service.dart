@@ -162,7 +162,7 @@ class RestaurantService {
   Future<List<Restaurant>> fetchRestaurants() async {
     try {
       final response = await _apiService.get(
-        ApiConfig.restaurantsEndpoint,
+        ApiConfig.nearestRestaurantsEndpoint,
         requiresAuth: true,
       );
 

@@ -26,3 +26,21 @@ class LogoWidget extends StatelessWidget {
     );
   }
 }
+
+
+// import 'package:flutter/material.dart';
+
+// class LogoWidget extends StatelessWidget {
+//   const LogoWidget({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return SizedBox(
+//       height: 120, // Adjust size as you like
+//       child: Image.asset(
+//         'assets/images/zenzioicon_copy.png',
+//         fit: BoxFit.contain,
+//       ),
+//     );
+//   }
+// }

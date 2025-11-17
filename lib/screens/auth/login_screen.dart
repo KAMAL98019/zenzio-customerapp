@@ -1,9 +1,7 @@
 import 'dart:convert';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-
 import '../../widgets/logo_widget.dart';
 import '../../widgets/custom_button.dart';
 import '../../core/constants/app_colors.dart';

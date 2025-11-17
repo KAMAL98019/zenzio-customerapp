@@ -3,7 +3,6 @@ class ApiConfig {
   // static const String baseUrl = 'https://backend.zenzio.in';
   static const String baseUrl = 'https://erica-transthoracic-envyingly.ngrok-free.dev';
   static const String apiVersion = '/api';
-  // Full API Base
   static const String apiBaseUrl = '$baseUrl$apiVersion';
   
   // ✅ Use your actual values from /clients/generate
@@ -19,8 +18,12 @@ class ApiConfig {
   static const String userProfileEndpoint = '/users/me';
   static const String otpSendEndpoint = '/otp/send';
   static const String otpVerifyEndpoint = '/otp/verify';
-  
-  static const String foodItemsEndpoint = '$baseUrl/restaurant-menu';
+  static const String refreshAuth = "/users/refresh-auth";
+  static const String logoutEndpoint = '$apiVersion/auth/logout';
+
+  static const String nearestRestaurantsEndpoint = "/restaurants/nearest";
+  // static const String restaurantsEndpoint = '/restaurants';
+  static const String foodItemsEndpoint = '/restaurant-menu/nearest';
 
 
   // ==================== AUTH OLD ENDPOINTS ====================
@@ -30,7 +33,7 @@ class ApiConfig {
   static const String forgotPasswordEndpoint = '$apiVersion/users/auth/forgot-password/send-otp';
   static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
   // static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
-  static const String logoutEndpoint = '$apiVersion/auth/logout';
+  // static const String logoutEndpoint = '$apiVersion/auth/logout';
   
   // static const String foodItemsEndpoint = '$baseUrl/food-items';
 
@@ -40,7 +43,7 @@ class ApiConfig {
   static const String updateProfileEndpoint = '$apiVersion/users/{userId}';
   
   // ==================== RESTAURANT ENDPOINTS ====================
-  static const String restaurantsEndpoint = '$apiVersion/restaurants';
+  // static const String restaurantsEndpoint = '$apiVersion/restaurants';
   static String restaurantDetailEndpoint(String id) => '$apiVersion/restaurants/$id';
   static String restaurantMenuEndpoint(String id) => '$apiVersion/restaurants/$id/menu';
   
@@ -76,10 +79,12 @@ static const String clearCartEndpoint = '$apiBaseUrl/carts/clear';
   static const String notificationsEndpoint = '$apiVersion/notifications';
   static String markNotificationReadEndpoint(String id) => '$apiVersion/notifications/$id/read';
   
-  // ==================== HEADERS ====================
+    // ==================== HEADERS ====================
+  
   static Map<String, String> get headers => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
       };
   
   static Map<String, String> authHeaders(String token) => {
@@ -88,6 +93,7 @@ static const String clearCartEndpoint = '$apiBaseUrl/carts/clear';
       };
   
   // ==================== TIMEOUTS ====================
+  
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
 
