@@ -36,18 +36,19 @@ class ApiService {
   };
 
   // Get headers with optional auth token
-  Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
-    final headers = Map<String, String>.from(defaultHeaders);
-    if (requiresAuth) {
-      final token = await _storage.read(key: 'auth_token');
-      if (token != null && token.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $token';
-      } else {
-        throw ApiException('No access token found. Please login again.');
-      }
-    }
-    return headers;
+Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
+  final headers = {...defaultHeaders};
+  if (requiresAuth) {
+    final token = await _storage.read(key: 'auth_token');
+    if (token?.isNotEmpty == true) headers['Authorization'] = 'Bearer $token';
   }
+  headers['platform'] = getPlatform();
+  headers['User-Agent'] = getPlatform();
+  headers['mode'] = 'development';
+  headers['clientId'] = ApiConfig.clientId;
+  headers['x-client-app'] = 'customer';
+  return headers;
+}
 
   // Handle API responses
   Future<dynamic> _handleResponse(http.Response response) async {
@@ -130,6 +131,23 @@ class ApiService {
       return _handleResponse(response);
     } catch (e) {
       throw ApiException('PUT request failed: $e');
+    }
+  }
+  // DELETE
+  Future<dynamic> delete(String endpoint,
+      {Map<String, dynamic>? body, bool requiresAuth = false}) async {
+    try {
+      final headers = await _getHeaders(requiresAuth: requiresAuth);
+      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+
+      // http.delete supports a body param (string) — encode if provided
+      final response = await http
+          .delete(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
+          .timeout(ApiConfig.connectTimeout);
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw ApiException('DELETE request failed: $e');
     }
   }
 

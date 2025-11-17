@@ -117,4 +117,33 @@ class MapService {
       rethrow;
     }
   }
+
+    // MAP SERVICE - ADD THIS METHOD
+  Future<Map<String, dynamic>> getNearestMenu(double lat, double lng) async {
+    final token = await storage.read(key: 'auth_token');
+    final platform = getPlatform();
+    final url = Uri.parse(
+          "${ApiConfig.baseUrl}${ApiConfig.foodItemsEndpoint}?lat=$lat&lng=$lng"
+        );
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'platform': platform,
+      },
+      body: jsonEncode({
+        "latitude": lat,
+        "longitude": lng,
+      }),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception("Failed to fetch nearest menu");
+    }
+  }
+
 }

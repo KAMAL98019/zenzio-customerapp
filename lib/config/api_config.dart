@@ -1,99 +1,118 @@
 class ApiConfig {
   // Base URL
   // static const String baseUrl = 'https://backend.zenzio.in';
-  static const String baseUrl = 'https://erica-transthoracic-envyingly.ngrok-free.dev';
+  // static const String baseUrl = 'https://erica-transthoracic-envyingly.ngrok-free.dev';
+  static const String baseUrl = 'http://72.61.172.167:3000';
   static const String apiVersion = '/api';
   static const String apiBaseUrl = '$baseUrl$apiVersion';
-  
+
   // ✅ Use your actual values from /clients/generate
   // static const clientId = 'b8da45ba-2a7a-488b-9764-60016ed964a5';
   static const clientId = '0fb4e7a0-8ca8-46a3-8ffe-0f4a078bb811';
   static const clientSecret = '';
 
-
-  // ==================== NEW AUTH ENDPOINTS ====================
+  // ==================== NEW AUTH ENDPOINTS ==================== 
   static const String signupEndpoint = "/users/auth/signup/email";
   static const String loginEndpoint = "/users/auth/login/email";
-  static const String firebaseSendVerificationEndpoint = "/firebase/send-verification";
+  static const String firebaseSendVerificationEndpoint ="/firebase/send-verification";
   static const String userProfileEndpoint = '/users/me';
   static const String otpSendEndpoint = '/otp/send';
   static const String otpVerifyEndpoint = '/otp/verify';
   static const String refreshAuth = "/users/refresh-auth";
   static const String logoutEndpoint = '$apiVersion/auth/logout';
 
+  // ==================== Home ENDPOINTS ====================
   static const String nearestRestaurantsEndpoint = "/restaurants/nearest";
   // static const String restaurantsEndpoint = '/restaurants';
+
+  // ==================== Menu ENDPOINTS ====================
   static const String foodItemsEndpoint = '/restaurant-menu/nearest';
+
+  // ==================== CART ENDPOINTS ====================
+  static const String cartEndpoint ='/cart'; // Get full cart for logged-in user
+  static const String addToCartEndpoint = '/cart/add';
+  static const String restaurantItemsEndpoint = "/cart/restaurant"; // View items for a restaurant group(cart/restaurant/RES-123ABC/items)
+  static const String updateCartQtyEndpoint = '/cart/item/1';
+  static const String removeCartItemEndpoint = '/cart/item/1';
+  static const String clearRestCartEndpoint ='/cart/group'; // Clear all items from a specific restaurant group
+  static const String clearCartEndpoint ='/cart/clear'; // Clear the complete cart
+
+
+
+
 
 
   // ==================== AUTH OLD ENDPOINTS ====================
   // static const String loginEndpoint = '$apiVersion/users/auth/login';
   // static const String signupEndpoint = '$apiVersion/users';
-  
-  static const String forgotPasswordEndpoint = '$apiVersion/users/auth/forgot-password/send-otp';
-  static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
+  static const String forgotPasswordEndpoint =
+      '$apiVersion/users/auth/forgot-password/send-otp';
+  static const String resetPasswordEndpoint =
+      '$apiVersion/users/auth/forgot-password/verify-otp';
   // static const String resetPasswordEndpoint = '$apiVersion/users/auth/forgot-password/verify-otp';
   // static const String logoutEndpoint = '$apiVersion/auth/logout';
-  
   // static const String foodItemsEndpoint = '$baseUrl/food-items';
 
   // ==================== USER ENDPOINTS ====================
   static const String usersEndpoint = '$apiVersion/users';
   // static const String userProfileEndpoint = '$apiVersion/users/me';
   static const String updateProfileEndpoint = '$apiVersion/users/{userId}';
-  
+
   // ==================== RESTAURANT ENDPOINTS ====================
   // static const String restaurantsEndpoint = '$apiVersion/restaurants';
-  static String restaurantDetailEndpoint(String id) => '$apiVersion/restaurants/$id';
-  static String restaurantMenuEndpoint(String id) => '$apiVersion/restaurants/$id/menu';
-  
+  static String restaurantDetailEndpoint(String id) =>
+      '$apiVersion/restaurants/$id';
+  static String restaurantMenuEndpoint(String id) =>
+      '$apiVersion/restaurants/$id/menu';
+
   // ==================== ORDER ENDPOINTS ====================
   static const String ordersEndpoint = '$apiVersion/orders';
   static String orderDetailEndpoint(String id) => '$apiVersion/orders/$id';
-  static String orderTrackingEndpoint(String id) => '$apiVersion/orders/$id/tracking';
-  
+  static String orderTrackingEndpoint(String id) =>
+      '$apiVersion/orders/$id/tracking';
+
   // ==================== BOOKING ENDPOINTS ====================
   static const String bookingsEndpoint = '$apiVersion/bookings';
   static String bookingDetailEndpoint(String id) => '$apiVersion/bookings/$id';
-  
+
   // ==================== ADDRESS ENDPOINTS ====================
   static const String addressesEndpoint = '$apiVersion/addresses';
   static String addressDetailEndpoint(String id) => '$apiVersion/addresses/$id';
   // ==================== CART ENDPOINTS ====================
-static const String cartEndpoint = '$apiBaseUrl/cart';
-static const String addToCartEndpoint = '$apiBaseUrl/cart/items';
-static const String updateCartEndpoint = '$apiBaseUrl/carts/update';
-static const String removeFromCartEndpoint = '$apiBaseUrl/carts/remove';
-static const String clearCartEndpoint = '$apiBaseUrl/carts/clear';
+  // static const String cartEndpoint = '$apiBaseUrl/cart';
+  // static const String addToCartEndpoint = '$apiBaseUrl/cart/items';
+  // static const String updateCartEndpoint = '$apiBaseUrl/carts/update';
+  // static const String removeFromCartEndpoint = '$apiBaseUrl/carts/remove';
+  // static const String clearCartEndpoint = '$apiBaseUrl/carts/clear';
 
-  
   // ==================== PAYMENT ENDPOINTS ====================
   static const String paymentMethodsEndpoint = '$apiVersion/payment-methods';
   static const String processPaymentEndpoint = '$apiVersion/payments/process';
-  
+
   // ==================== COUPON ENDPOINTS ====================
   static const String couponsEndpoint = '$apiVersion/coupons';
   static const String applyCouponEndpoint = '$apiVersion/coupons/apply';
-  
+
   // ==================== NOTIFICATION ENDPOINTS ====================
   static const String notificationsEndpoint = '$apiVersion/notifications';
-  static String markNotificationReadEndpoint(String id) => '$apiVersion/notifications/$id/read';
-  
-    // ==================== HEADERS ====================
-  
-  static Map<String, String> get headers => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'ngrok-skip-browser-warning': 'true',
-      };
-  
-  static Map<String, String> authHeaders(String token) => {
-        ...headers,
-        'Authorization': 'Bearer $token',
-      };
-  
+  static String markNotificationReadEndpoint(String id) =>
+      '$apiVersion/notifications/$id/read';
+
+  // ==================== HEADERS ====================
+
+  // static Map<String, String> get headers => {
+  //       'Content-Type': 'application/json',
+  //       'Accept': 'application/json',
+  //       'ngrok-skip-browser-warning': 'true',
+  //     };
+
+  // static Map<String, String> authHeaders(String token) => {
+  //       ...headers,
+  //       'Authorization': 'Bearer $token',
+  //     };
+
   // ==================== TIMEOUTS ====================
-  
+
   static const Duration connectTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
 

@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:zenzio_customer/config/api_config.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:zenzio_customer/services/api_service.dart';
 import 'package:zenzio_customer/services/auth_service.dart';
+import 'package:zenzio_customer/services/location_service.dart';
 import '../../data/models/food_item.dart';
 import '../../data/models/cart_model.dart';
 import '../../services/cart_service.dart';
@@ -17,11 +17,13 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final AuthService _authService = AuthService();
   final ApiService _apiService = ApiService();
+  final AuthService _authService = AuthService();
 
   List<FoodItem> _foodItems = [];
   bool _isLoading = true;
+  String? _errorMessage;
+  Position? _currentPosition;
 
   String? selectedCuisine = 'All';
   String? selectedCategory = 'All';
@@ -34,7 +36,7 @@ class _MenuScreenState extends State<MenuScreen> {
   @override
   void initState() {
     super.initState();
-    fetchFoodItems();
+    _initializeAndFetch();
   }
 
   @override
@@ -43,150 +45,199 @@ class _MenuScreenState extends State<MenuScreen> {
     super.dispose();
   }
 
-  /// Fetch food items with token validation and refresh
-  Future<void> fetchFoodItems({int retryCount = 0}) async {
-    const maxRetries = 1;
+  /// Initialize location and fetch menus
+  Future<void> _initializeAndFetch() async {
+    // Check if user is logged in
+    await _checkAuthStatus();
+    await _getLocationAndFetch();
+  }
 
+  /// Check authentication status
+  Future<void> _checkAuthStatus() async {
+    final token = await _authService.getAccessToken();
+    final isLoggedIn = _authService.isLoggedIn;
+    
+    debugPrint('🔐 Auth Status Check:');
+    debugPrint('  - Token exists: ${token != null && token.isNotEmpty}');
+    debugPrint('  - Token length: ${token?.length ?? 0}');
+    debugPrint('  - Is logged in: $isLoggedIn');
+    debugPrint('  - Current user: ${_authService.currentUser?.name ?? "null"}');
+    
+    if (token != null && token.isNotEmpty) {
+      debugPrint('  - Token preview: ${token.substring(0, min(30, token.length))}...');
+    }
+  }
+
+  /// Get current location and fetch menus
+  Future<void> _getLocationAndFetch() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Check auth first
+      final token = await _authService.getAccessToken();
+      if (token == null || token.isEmpty) {
+        debugPrint('❌ No access token - user needs to login');
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Please log in to view menu items';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      // Get current location
+      final position = await LocationService.getCurrentLocation();
+
+      if (position == null) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Location permission required to view nearby menus';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
+      _currentPosition = position;
+      debugPrint('📍 Location: ${position.latitude}, ${position.longitude}');
+
+      // Fetch menus with location
+      await fetchFoodItems(position.latitude, position.longitude);
+    } catch (e) {
+      debugPrint('❌ Location error: $e');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to get location. Please enable location services.';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Fetch food items from nearest restaurant
+  Future<void> fetchFoodItems(double lat, double lng) async {
     if (!mounted) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Validate token exists
-      final accessToken = await _authService.getAccessToken();
+      debugPrint('🌐 Fetching nearest food items from API');
+      debugPrint('📍 Coordinates: lat=$lat, lng=$lng');
 
-      if (accessToken == null || accessToken.isEmpty) {
-        debugPrint('❌ No token found');
-        
-        if (mounted) {
-          _showErrorAndNavigateToLogin('Please log in to view menu items');
-        }
-        
-        setState(() => _isLoading = false);
-        return;
-      }
+      // Double-check token before making request
+      final token = await _authService.getAccessToken();
+      debugPrint('🔑 Token before API call: ${token != null ? "EXISTS (${token.length} chars)" : "NULL"}');
 
-      debugPrint('🌐 Fetching food items from API');
-
-      // Make API request
+      // Make API request with location parameters
       final response = await _apiService.get(
-        '/restaurant-menu',
+        '/restaurant-menu/nearest?lat=$lat&lng=$lng',
         requiresAuth: true,
       );
 
       debugPrint('📥 Food items response received');
+      debugPrint('📦 Response structure: ${response.keys.toList()}');
 
-      if (response['success'] == true && response['data'] is List) {
-        final items = (response['data'] as List)
-            .map<FoodItem>((e) => FoodItem.fromJson(e))
-            .toList();
-
-        // Extract unique cuisines and categories
-        final cuisineSet = <String>{};
-        final categorySet = <String>{};
-
-        for (var item in items) {
-          final c = item.cuisine?.trim();
-          final cat = item.category?.trim();
-          if (c != null && c.isNotEmpty) cuisineSet.add(c);
-          if (cat != null && cat.isNotEmpty) categorySet.add(cat);
+      // Handle different response formats
+      List<dynamic> itemsData = [];
+      
+      if (response['success'] == true) {
+        // Format 1: {success: true, data: [...]}
+        if (response['data'] is List) {
+          itemsData = response['data'] as List;
+        } 
+        // Format 2: {success: true, data: {items: [...]}}
+        else if (response['data'] is Map && response['data']['items'] is List) {
+          itemsData = response['data']['items'] as List;
         }
+        // Format 3: {success: true, data: {menuItems: [...]}}
+        else if (response['data'] is Map && response['data']['menuItems'] is List) {
+          itemsData = response['data']['menuItems'] as List;
+        }
+      } 
+      // Format 4: Direct list [{...}, {...}]
+      else if (response is List) {
+        itemsData = response;
+      }
+      // Format 5: {items: [...]}
+      else if (response['items'] is List) {
+        itemsData = response['items'] as List;
+      }
+      // Format 6: {menuItems: [...]}
+      else if (response['menuItems'] is List) {
+        itemsData = response['menuItems'] as List;
+      }
 
-        if (!mounted) return;
-
-        setState(() {
-          _foodItems = items;
-          cuisines = ['All', ...cuisineSet.toList()..sort()];
-          categories = ['All', ...categorySet.toList()..sort()];
-          _isLoading = false;
-
-          // Ensure selected values are valid
-          if (!cuisines.contains(selectedCuisine)) selectedCuisine = 'All';
-          if (!categories.contains(selectedCategory)) selectedCategory = 'All';
-        });
-
-        debugPrint('✅ Loaded ${items.length} food items');
+      if (itemsData.isEmpty) {
+        debugPrint('⚠️ No food items found in response');
+        if (mounted) {
+          setState(() {
+            _foodItems = [];
+            _isLoading = false;
+            _errorMessage = null;
+          });
+        }
         return;
       }
 
-      throw Exception('Invalid response format from server');
-      
-    } on ApiException catch (e) {
-      debugPrint('❌ API Error: ${e.message}');
+      final items = itemsData
+          .map<FoodItem>((e) => FoodItem.fromJson(e as Map<String, dynamic>))
+          .toList();
 
-      // Handle 401 - Token expired
-      if (e.statusCode == 401 && retryCount < maxRetries) {
-        debugPrint('⚠️ Token expired, attempting refresh...');
+      // Extract unique cuisines and categories
+      final cuisineSet = <String>{};
+      final categorySet = <String>{};
 
-        final refreshed = await _authService.refreshToken();
-
-        if (refreshed) {
-          debugPrint('🔄 Token refreshed, retrying request...');
-          await Future.delayed(const Duration(milliseconds: 100));
-          return await fetchFoodItems(retryCount: retryCount + 1);
-        } else {
-          // Refresh failed
-          if (mounted) {
-            _showErrorAndNavigateToLogin('Session expired. Please log in again.');
-          }
-        }
-      } else {
-        // Other API errors
-        if (mounted) {
-          _showError(e.message);
-        }
+      for (var item in items) {
+        final c = item.cuisine?.trim();
+        final cat = item.category?.trim();
+        if (c != null && c.isNotEmpty) cuisineSet.add(c);
+        if (cat != null && cat.isNotEmpty) categorySet.add(cat);
       }
 
+      if (!mounted) return;
+
+      setState(() {
+        _foodItems = items;
+        cuisines = ['All', ...cuisineSet.toList()..sort()];
+        categories = ['All', ...categorySet.toList()..sort()];
+        _isLoading = false;
+        _errorMessage = null;
+
+        // Ensure selected values are valid
+        if (!cuisines.contains(selectedCuisine)) selectedCuisine = 'All';
+        if (!categories.contains(selectedCategory)) selectedCategory = 'All';
+      });
+
+      debugPrint('✅ Loaded ${items.length} food items from nearest restaurant');
+      
+    } on ApiException catch (e) {
+      debugPrint('❌ API Error: ${e.message} (Status: ${e.statusCode})');
+      
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _errorMessage = e.statusCode == 401 
+              ? 'Session expired. Please log in again.'
+              : e.message;
+          _isLoading = false;
+        });
       }
       
     } catch (e) {
       debugPrint('❌ Error fetching food items: $e');
       
       if (mounted) {
-        _showError('Failed to load menu items. Please try again.');
-        setState(() => _isLoading = false);
+        setState(() {
+          _errorMessage = 'Failed to load menu items. Please try again.';
+          _isLoading = false;
+        });
       }
     }
-  }
-
-  /// Show error message
-  void _showError(String message) {
-    if (!mounted) return;
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        action: SnackBarAction(
-          label: 'Retry',
-          textColor: Colors.white,
-          onPressed: fetchFoodItems,
-        ),
-      ),
-    );
-  }
-
-  /// Show error and navigate to login
-  void _showErrorAndNavigateToLogin(String message) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-
-    // Navigate to login after delay
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        _authService.logout();
-        Navigator.pushReplacementNamed(context, '/');
-      }
-    });
   }
 
   /// Apply filters to food items
@@ -218,7 +269,7 @@ class _MenuScreenState extends State<MenuScreen> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text(
-          "Menu",
+          " Menu",
           style: TextStyle(
             color: Color(0xFF2D2D2D),
             fontWeight: FontWeight.w600,
@@ -233,6 +284,11 @@ class _MenuScreenState extends State<MenuScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // Debug button
+          // IconButton(
+          //   icon: const Icon(Icons.bug_report, color: Colors.blue),
+          //   onPressed: _checkAuthStatus,
+          // ),
           IconButton(
             icon: const Icon(Icons.shopping_cart, color: Color(0xFFE53935)),
             onPressed: () => Navigator.pushNamed(context, '/cart'),
@@ -250,18 +306,20 @@ class _MenuScreenState extends State<MenuScreen> {
                       color: Color(0xFFE53935),
                     ),
                   )
-                : filteredFoods.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: fetchFoodItems,
-                        color: const Color(0xFFE53935),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filteredFoods.length,
-                          itemBuilder: (context, index) =>
-                              _buildFoodCard(filteredFoods[index]),
-                        ),
-                      ),
+                : _errorMessage != null
+                    ? _buildErrorState()
+                    : filteredFoods.isEmpty
+                        ? _buildEmptyState()
+                        : RefreshIndicator(
+                            onRefresh: _getLocationAndFetch,
+                            color: const Color(0xFFE53935),
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: filteredFoods.length,
+                              itemBuilder: (context, index) =>
+                                  _buildFoodCard(filteredFoods[index]),
+                            ),
+                          ),
           ),
         ],
       ),
@@ -337,6 +395,52 @@ class _MenuScreenState extends State<MenuScreen> {
     );
   }
 
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage ?? 'Something went wrong',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _getLocationAndFetch,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE53935),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              icon: const Icon(Icons.login),
+              label: const Text('Go to Login'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -351,7 +455,7 @@ class _MenuScreenState extends State<MenuScreen> {
           Text(
             _searchController.text.isNotEmpty
                 ? 'No dishes found'
-                : 'No food items available',
+                : 'No food items available nearby',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey[600],
@@ -381,7 +485,6 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Food image
           Container(
             width: 80,
             height: 80,
@@ -406,8 +509,6 @@ class _MenuScreenState extends State<MenuScreen> {
                 : null,
           ),
           const SizedBox(width: 12),
-
-          // Food details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,17 +537,9 @@ class _MenuScreenState extends State<MenuScreen> {
                   child: Row(
                     children: [
                       if (food.cuisine != null)
-                        _buildTag(
-                          food.cuisine!,
-                          Icons.restaurant_menu,
-                          Colors.orange,
-                        ),
+                        _buildTag(food.cuisine!, Icons.restaurant_menu, Colors.orange),
                       if (food.category != null)
-                        _buildTag(
-                          food.category!,
-                          Icons.category,
-                          Colors.blue,
-                        ),
+                        _buildTag(food.category!, Icons.category, Colors.blue),
                       _buildTag(
                         food.veg == true ? "Veg" : "Non-Veg",
                         food.veg == true ? Icons.eco : Icons.set_meal,
@@ -467,8 +560,6 @@ class _MenuScreenState extends State<MenuScreen> {
               ],
             ),
           ),
-
-          // Add button
           GestureDetector(
             onTap: () => _openAddItemSheet(food),
             child: Container(
@@ -530,9 +621,11 @@ class _MenuScreenState extends State<MenuScreen> {
       ),
     );
   }
+
+  int min(int a, int b) => a < b ? a : b;
 }
 
-// ----------------------------- 🛍 Add Item Sheet -----------------------------
+// Add Item Sheet remains the same...
 class AddItemSheet extends StatefulWidget {
   final FoodItem food;
   const AddItemSheet({super.key, required this.food});
@@ -548,11 +641,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
 
   double get _total {
     double base = widget.food.price ?? 0;
-    double extra = _size == 'Large'
-        ? 40
-        : _size == 'Small'
-            ? -50
-            : 0;
+    double extra = _size == 'Large' ? 40 : _size == 'Small' ? -50 : 0;
     return (base + extra) * _quantity;
   }
 
@@ -569,10 +658,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
               Expanded(
                 child: Text(
                   widget.food.name,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
               ),
               Text(
@@ -600,18 +686,12 @@ class _AddItemSheetState extends State<AddItemSheet> {
           const SizedBox(height: 20),
           _buildQuantitySelector(),
           const SizedBox(height: 20),
-          const Text(
-            'Choose size',
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
+          const Text('Choose size', style: TextStyle(fontWeight: FontWeight.w500)),
           _buildSizeOption('Small', '-₹50'),
           _buildSizeOption('Medium', '₹0'),
           _buildSizeOption('Large', '+₹40'),
           const SizedBox(height: 16),
-          const Text(
-            'Choose spice level',
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
+          const Text('Choose spice level', style: TextStyle(fontWeight: FontWeight.w500)),
           _buildSpiceOption('Mild'),
           _buildSpiceOption('Medium'),
           _buildSpiceOption('Hot'),
@@ -624,16 +704,11 @@ class _AddItemSheetState extends State<AddItemSheet> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE53935),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               child: Text(
                 'Add to Cart - ₹${_total.toStringAsFixed(0)}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -645,29 +720,17 @@ class _AddItemSheetState extends State<AddItemSheet> {
   Widget _buildQuantitySelector() {
     return Row(
       children: [
-        const Text(
-          'Quantity',
-          style: TextStyle(fontWeight: FontWeight.w500),
-        ),
+        const Text('Quantity', style: TextStyle(fontWeight: FontWeight.w500)),
         const Spacer(),
         IconButton(
-          icon: const Icon(
-            Icons.remove_circle_outline,
-            color: Color(0xFFE53935),
-          ),
+          icon: const Icon(Icons.remove_circle_outline, color: Color(0xFFE53935)),
           onPressed: () {
             if (_quantity > 1) setState(() => _quantity--);
           },
         ),
-        Text(
-          '$_quantity',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
+        Text('$_quantity', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         IconButton(
-          icon: const Icon(
-            Icons.add_circle_outline,
-            color: Color(0xFFE53935),
-          ),
+          icon: const Icon(Icons.add_circle_outline, color: Color(0xFFE53935)),
           onPressed: () => setState(() => _quantity++),
         ),
       ],
@@ -681,18 +744,14 @@ class _AddItemSheetState extends State<AddItemSheet> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             border: Border.all(
-              color: _size == size
-                  ? const Color(0xFFE53935)
-                  : const Color(0xFFE0E0E0),
+              color: _size == size ? const Color(0xFFE53935) : const Color(0xFFE0E0E0),
             ),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: [
               Icon(
-                _size == size
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
+                _size == size ? Icons.radio_button_checked : Icons.radio_button_unchecked,
                 color: _size == size ? const Color(0xFFE53935) : Colors.grey,
               ),
               const SizedBox(width: 8),
@@ -711,18 +770,14 @@ class _AddItemSheetState extends State<AddItemSheet> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             border: Border.all(
-              color: _spice == spice
-                  ? const Color(0xFFE53935)
-                  : const Color(0xFFE0E0E0),
+              color: _spice == spice ? const Color(0xFFE53935) : const Color(0xFFE0E0E0),
             ),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: [
               Icon(
-                _spice == spice
-                    ? Icons.radio_button_checked
-                    : Icons.radio_button_unchecked,
+                _spice == spice ? Icons.radio_button_checked : Icons.radio_button_unchecked,
                 color: _spice == spice ? const Color(0xFFE53935) : Colors.grey,
               ),
               const SizedBox(width: 8),
@@ -746,10 +801,8 @@ class _AddItemSheetState extends State<AddItemSheet> {
 
     try {
       await cartService.addToCart(item);
-
       if (!mounted) return;
       Navigator.pop(context);
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${widget.food.name} added to cart'),
@@ -758,16 +811,12 @@ class _AddItemSheetState extends State<AddItemSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-
-      // Handle different restaurant error
       if (e.toString().contains('DIFFERENT_RESTAURANT')) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Cart Conflict'),
-            content: const Text(
-              'You already have items from another restaurant. Clear your cart?',
-            ),
+            content: const Text('You already have items from another restaurant. Clear your cart?'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -779,16 +828,12 @@ class _AddItemSheetState extends State<AddItemSheet> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
-                  Navigator.pop(context); // Close dialog
-                  
+                  Navigator.pop(context);
                   try {
                     await cartService.clearCart();
                     await cartService.addToCart(item);
-                    
                     if (!mounted) return;
-                    
-                    Navigator.pop(context); // Close bottom sheet
-                    
+                    Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('${widget.food.name} added to cart'),
@@ -797,12 +842,8 @@ class _AddItemSheetState extends State<AddItemSheet> {
                     );
                   } catch (err) {
                     if (!mounted) return;
-                    
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error: $err'),
-                        backgroundColor: Colors.red,
-                      ),
+                      SnackBar(content: Text('Error: $err'), backgroundColor: Colors.red),
                     );
                   }
                 },
@@ -812,20 +853,14 @@ class _AddItemSheetState extends State<AddItemSheet> {
           ),
         );
       } else {
-        // Generic error
         Navigator.pop(context);
-        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
 }
-
 
 // import 'dart:convert';
 // import 'package:flutter/material.dart';

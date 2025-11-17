@@ -94,7 +94,16 @@ class ZenzioApp extends StatelessWidget {
         '/order-tracking':(context)=>const OrderTrackingScreen(orderId: null,),
         // Booking Flow
         '/bookings': (context) => const BookingsHomeScreen(),
-        '/booking-detail': (context) => const BookingDetailScreen(),
+       '/booking-details': (context) {
+  final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+
+  return BookingDetailsScreen(
+    bookingId: args?['bookingId'] ?? '',
+    userId: args?['userId'] ?? '',
+  );
+},
+
+
         '/booking-form': (context) => const BookingFormScreen(),
         '/booking-confirmation': (context) => const BookingConfirmationScreen(),
         
@@ -110,19 +119,19 @@ class ZenzioApp extends StatelessWidget {
         '/chat-assistant': (context) => const ChatAssistantScreen(),
         '/my-coupons': (context) => const MyCouponsScreen(),
       },
-           onGenerateRoute: (settings) {
-        if (settings.name == '/booking-details') {
-          final args = settings.arguments as Map<String, dynamic>;
-          return MaterialPageRoute(
-            builder: (context) => BookingDetailsScreen(
-              bookingId: args['bookingId'],
-              userId: args['userId'],
-            ),
-          );
-        }
+      //      onGenerateRoute: (settings) {
+      //   if (settings.name == '/booking-details') {
+      //     // final args = settings.arguments as Map<String, dynamic>;
+      //     return MaterialPageRoute(
+      //       builder: (context) => BookingDetailsScreen(
+      //         bookingId: args['bookingId'],
+      //         userId: args['userId'],
+      //       ),
+      //     );
+      //   }
 
-        return null;
-      },
+      //   return null;
+      // },
     );
   }
 }

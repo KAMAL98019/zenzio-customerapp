@@ -22,7 +22,7 @@ class CartItem {
   final List<AddOn> selectedAddOns;
 
   CartItem({
-    required this.foodId,
+    required this.foodId, 
     required this.quantity,
     required this.selectedAddOns,
   });

@@ -1,70 +1,185 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:zenzio_customer/services/api_service.dart';
 import '../data/models/cart_model.dart';
-import 'token_service.dart';
+import '../config/api_config.dart';
 
 class CartService {
-  static const String baseUrl = "https://backend.zenzio.in/api/cart";
-  final TokenService _tokenService = TokenService();
+  final ApiService _api = ApiService();
 
-  /// Adds item to cart using token-based auth
-Future<void> addToCart(CartItem item) async {
-  final token = await _tokenService.getToken();
-  final userId = await _tokenService.getUserId(); // ✅ Fetch userId
+  // ============================
+  // 1. FETCH FULL CART
+  // ============================
+  Future<List<CartItem>> fetchCartItems() async {
+    final response =
+        await _api.get(ApiConfig.cartEndpoint, requiresAuth: true);
 
-  if (token == null || userId == null) {
-    throw Exception("User not logged in");
+    print("🛒 FULL CART RESPONSE => $response");
+
+    if (response["data"] == null || response["data"]["cart"] == null) return [];
+
+    final items = response["data"]["cart"]["items"] ?? [];
+
+    return items.map((e) => CartItem.fromJson(e)).toList();
   }
 
-  final body = {
-    "userId": userId, // ✅ Include userId here
-    "foodId": item.foodId,
-    "quantity": item.quantity,
-    "selectedAddOns": item.selectedAddOns
-        .map((addon) => {"name": addon.name, "price": addon.price})
-        .toList(),
-  };
+  // ============================
+  // 2. ADD ITEM TO CART
+  // ============================
+  Future<void> addToCart(CartItem item) async {
+    final body = {
+      "foodId": item.foodId,
+      "quantity": item.quantity,
+      "selectedAddOns": item.selectedAddOns
+          .map((a) => {"name": a.name, "price": a.price})
+          .toList(),
+    };
 
-  final response = await http.post(
-    Uri.parse("$baseUrl/items"),
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-    },
-    body: jsonEncode(body),
-  );
-
-  print('🛒 Add to Cart Response: ${response.statusCode} ${response.body}');
-
-  if (response.statusCode == 200 || response.statusCode == 201) {
-    return; // ✅ Success
-  } else if (response.statusCode == 409) {
-    final data = jsonDecode(response.body);
-    final message = data['message'] ?? 'Cart conflict';
-    throw Exception('DIFFERENT_RESTAURANT: $message');
-  } else {
-    throw Exception('Failed to add item to cart: ${response.body}');
-  }
-}
-
-  /// Clear cart using token-based auth
-  Future<void> clearCart() async {
-    final token = await _tokenService.getToken();
-    if (token == null) throw Exception("User not logged in");
-
-    final response = await http.delete(
-      Uri.parse("$baseUrl/clear"),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+    final response = await _api.post(
+      ApiConfig.addToCartEndpoint,
+      body: body,
+      requiresAuth: true,
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to clear cart: ${response.body}');
-    }
+    print("🛒 AddToCart => $response");
+  }
+
+  // ============================
+  // 3. UPDATE CART ITEM QUANTITY
+  // URL → /cart/item/:id
+  // ============================
+  Future<void> updateItemQuantity(String itemId, int quantity) async {
+    final body = {"quantity": quantity};
+
+    final response = await _api.put(
+      "${ApiConfig.updateCartQtyEndpoint}/$itemId",
+      body: body,
+      requiresAuth: true,
+    );
+
+    print("🔄 Update Quantity => $response");
+  }
+
+  // ============================
+  // 4. REMOVE ITEM FROM CART
+  // URL → /cart/item/:id
+  // ============================
+  Future<void> removeCartItem(String itemId) async {
+    final response = await _api.delete(
+      "${ApiConfig.removeCartItemEndpoint}/$itemId",
+      requiresAuth: true,
+    );
+
+    print("❌ Remove Cart Item => $response");
+  }
+
+  // ============================
+  // 5. CLEAR CART (ALL RESTAURANTS)
+  // ============================
+  Future<void> clearCart() async {
+    final response = await _api.post(
+      ApiConfig.clearCartEndpoint,
+      body: {},
+      requiresAuth: true,
+    );
+
+    print("🗑 Clear Cart => $response");
+  }
+
+  // ============================
+  // 6. CLEAR SPECIFIC RESTAURANT CART GROUP
+  // URL → /cart/group/:restId
+  // ============================
+  Future<void> clearRestaurantCart(String restaurantId) async {
+    final response = await _api.delete(
+      "${ApiConfig.clearRestCartEndpoint}/$restaurantId",
+      requiresAuth: true,
+    );
+
+    print("🗑 Clear Restaurant Cart => $response");
+  }
+
+  // ============================
+  // 7. GET ITEMS BY RESTAURANT
+  // URL → /cart/restaurant/:id/items
+  // ============================
+  Future<List<dynamic>> fetchRestaurantItems(String restaurantId) async {
+    final response = await _api.get(
+      "${ApiConfig.restaurantItemsEndpoint}/$restaurantId/items",
+      requiresAuth: true,
+    );
+
+    print("🍽 Restaurant Items => $response");
+
+    return response["data"]?["items"] ?? [];
   }
 }
+
+//main import 'dart:convert';
+// import 'package:http/http.dart' as http;
+// import '../data/models/cart_model.dart';
+// import 'token_service.dart';
+
+// class CartService {
+//   static const String baseUrl = "https://backend.zenzio.in/api/cart";
+//   final TokenService _tokenService = TokenService();
+
+//   /// Adds item to cart using token-based auth
+// Future<void> addToCart(CartItem item) async {
+//   final token = await _tokenService.getToken();
+//   final userId = await _tokenService.getUserId(); 
+
+//   if (token == null || userId == null) {
+//     throw Exception("User not logged in");
+//   }
+
+//   final body = {
+//     "userId": userId, 
+//     "foodId": item.foodId,
+//     "quantity": item.quantity,
+//     "selectedAddOns": item.selectedAddOns
+//         .map((addon) => {"name": addon.name, "price": addon.price})
+//         .toList(),
+//   };
+
+//   final response = await http.post(
+//     Uri.parse("$baseUrl/items"),
+//     headers: {
+//       'Content-Type': 'application/json',
+//       'Authorization': 'Bearer $token',
+//     },
+//     body: jsonEncode(body),
+//   );
+
+//   print('🛒 Add to Cart Response: ${response.statusCode} ${response.body}');
+
+//   if (response.statusCode == 200 || response.statusCode == 201) {
+//     return; // ✅ Success
+//   } else if (response.statusCode == 409) {
+//     final data = jsonDecode(response.body);
+//     final message = data['message'] ?? 'Cart conflict';
+//     throw Exception('DIFFERENT_RESTAURANT: $message');
+//   } else {
+//     throw Exception('Failed to add item to cart: ${response.body}');
+//   }
+// }
+
+//   /// Clear cart using token-based auth
+//   Future<void> clearCart() async {
+//     final token = await _tokenService.getToken();
+//     if (token == null) throw Exception("User not logged in");
+
+//     final response = await http.delete(
+//       Uri.parse("$baseUrl/clear"),
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': 'Bearer $token',
+//       },
+//     );
+
+//     if (response.statusCode != 200) {
+//       throw Exception('Failed to clear cart: ${response.body}');
+//     }
+//   }
+// }
   
 
 
