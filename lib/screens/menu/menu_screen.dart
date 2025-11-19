@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:zenzio_customer/data/models/food_model.dart';
 import 'package:zenzio_customer/services/api_service.dart';
 import 'package:zenzio_customer/services/auth_service.dart';
 import 'package:zenzio_customer/services/location_service.dart';
@@ -9,6 +10,7 @@ import '../../data/models/cart_model.dart';
 import '../../services/cart_service.dart';
 
 class MenuScreen extends StatefulWidget {
+  
   const MenuScreen({super.key});
 
   @override
@@ -120,125 +122,227 @@ class _MenuScreenState extends State<MenuScreen> {
     }
   }
 
-  /// Fetch food items from nearest restaurant
-  Future<void> fetchFoodItems(double lat, double lng) async {
+/// Fetch food items from nearest restaurant
+Future<void> fetchFoodItems(double lat, double lng) async {
+  if (!mounted) return;
+
+  setState(() => _isLoading = true);
+
+  try {
+    debugPrint('🌐 Fetching nearest food items from API');
+    debugPrint('📍 Coordinates: lat=$lat, lng=$lng');
+
+    // Double-check token before making request
+    final token = await _authService.getAccessToken();
+    debugPrint(
+      '🔑 Token before API call: ${token != null ? "EXISTS (${token.length} chars)" : "NULL"}'
+    );
+
+    // Make API request with location parameters
+    final response = await _apiService.get(
+      '/restaurant-menu/nearest?lat=$lat&lng=$lng',
+      requiresAuth: true,
+    );
+
+    debugPrint('📥 Food items response received');
+    debugPrint('📦 Response structure: ${response.keys.toList()}');
+
+    // Extract restaurant_menus
+    List<dynamic> itemsData = [];
+    if (response['status'] == 'success' &&
+        response['data'] != null &&
+        response['data']['restaurant_menus'] is List) {
+      itemsData = response['data']['restaurant_menus'] as List;
+    }
+
+    if (itemsData.isEmpty) {
+      debugPrint('⚠️ No food items found in response');
+      if (mounted) {
+        setState(() {
+          _foodItems = [];
+          _isLoading = false;
+          _errorMessage = null;
+        });
+      }
+      return;
+    }
+
+    // Map to FoodItem
+    final items = itemsData
+        .map<FoodItem>((e) => FoodItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+
+    // Extract unique cuisines and categories
+    final cuisineSet = <String>{};
+    final categorySet = <String>{};
+
+    for (var item in items) {
+      final c = item.cuisine?.trim();
+      final cat = item.category?.trim();
+      if (c != null && c.isNotEmpty) cuisineSet.add(c);
+      if (cat != null && cat.isNotEmpty) categorySet.add(cat);
+    }
+
     if (!mounted) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _foodItems = items;
+      cuisines = ['All', ...cuisineSet.toList()..sort()];
+      categories = ['All', ...categorySet.toList()..sort()];
+      _isLoading = false;
+      _errorMessage = null;
 
-    try {
-      debugPrint('🌐 Fetching nearest food items from API');
-      debugPrint('📍 Coordinates: lat=$lat, lng=$lng');
+      // Ensure selected values are valid
+      if (!cuisines.contains(selectedCuisine)) selectedCuisine = 'All';
+      if (!categories.contains(selectedCategory)) selectedCategory = 'All';
+    });
 
-      // Double-check token before making request
-      final token = await _authService.getAccessToken();
-      debugPrint('🔑 Token before API call: ${token != null ? "EXISTS (${token.length} chars)" : "NULL"}');
+    debugPrint('✅ Loaded ${items.length} food items from nearest restaurant');
 
-      // Make API request with location parameters
-      final response = await _apiService.get(
-        '/restaurant-menu/nearest?lat=$lat&lng=$lng',
-        requiresAuth: true,
-      );
+  } on ApiException catch (e) {
+    debugPrint('❌ API Error: ${e.message} (Status: ${e.statusCode})');
 
-      debugPrint('📥 Food items response received');
-      debugPrint('📦 Response structure: ${response.keys.toList()}');
-
-      // Handle different response formats
-      List<dynamic> itemsData = [];
-      
-      if (response['success'] == true) {
-        // Format 1: {success: true, data: [...]}
-        if (response['data'] is List) {
-          itemsData = response['data'] as List;
-        } 
-        // Format 2: {success: true, data: {items: [...]}}
-        else if (response['data'] is Map && response['data']['items'] is List) {
-          itemsData = response['data']['items'] as List;
-        }
-        // Format 3: {success: true, data: {menuItems: [...]}}
-        else if (response['data'] is Map && response['data']['menuItems'] is List) {
-          itemsData = response['data']['menuItems'] as List;
-        }
-      } 
-      // Format 4: Direct list [{...}, {...}]
-      else if (response is List) {
-        itemsData = response;
-      }
-      // Format 5: {items: [...]}
-      else if (response['items'] is List) {
-        itemsData = response['items'] as List;
-      }
-      // Format 6: {menuItems: [...]}
-      else if (response['menuItems'] is List) {
-        itemsData = response['menuItems'] as List;
-      }
-
-      if (itemsData.isEmpty) {
-        debugPrint('⚠️ No food items found in response');
-        if (mounted) {
-          setState(() {
-            _foodItems = [];
-            _isLoading = false;
-            _errorMessage = null;
-          });
-        }
-        return;
-      }
-
-      final items = itemsData
-          .map<FoodItem>((e) => FoodItem.fromJson(e as Map<String, dynamic>))
-          .toList();
-
-      // Extract unique cuisines and categories
-      final cuisineSet = <String>{};
-      final categorySet = <String>{};
-
-      for (var item in items) {
-        final c = item.cuisine?.trim();
-        final cat = item.category?.trim();
-        if (c != null && c.isNotEmpty) cuisineSet.add(c);
-        if (cat != null && cat.isNotEmpty) categorySet.add(cat);
-      }
-
-      if (!mounted) return;
-
+    if (mounted) {
       setState(() {
-        _foodItems = items;
-        cuisines = ['All', ...cuisineSet.toList()..sort()];
-        categories = ['All', ...categorySet.toList()..sort()];
+        _errorMessage = e.statusCode == 401
+            ? 'Session expired. Please log in again.'
+            : e.message;
         _isLoading = false;
-        _errorMessage = null;
-
-        // Ensure selected values are valid
-        if (!cuisines.contains(selectedCuisine)) selectedCuisine = 'All';
-        if (!categories.contains(selectedCategory)) selectedCategory = 'All';
       });
+    }
 
-      debugPrint('✅ Loaded ${items.length} food items from nearest restaurant');
-      
-    } on ApiException catch (e) {
-      debugPrint('❌ API Error: ${e.message} (Status: ${e.statusCode})');
-      
-      if (mounted) {
-        setState(() {
-          _errorMessage = e.statusCode == 401 
-              ? 'Session expired. Please log in again.'
-              : e.message;
-          _isLoading = false;
-        });
-      }
-      
-    } catch (e) {
-      debugPrint('❌ Error fetching food items: $e');
-      
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Failed to load menu items. Please try again.';
-          _isLoading = false;
-        });
-      }
+  } catch (e) {
+    debugPrint('❌ Error fetching food items: $e');
+
+    if (mounted) {
+      setState(() {
+        _errorMessage = 'Failed to load menu items. Please try again.';
+        _isLoading = false;
+      });
     }
   }
+}
+
+
+  // /// Fetch food items from nearest restaurant
+  // Future<void> fetchFoodItems(double lat, double lng) async {
+  //   if (!mounted) return;
+
+  //   setState(() => _isLoading = true);
+
+  //   try {
+  //     debugPrint('🌐 Fetching nearest food items from API');
+  //     debugPrint('📍 Coordinates: lat=$lat, lng=$lng');
+
+  //     // Double-check token before making request
+  //     final token = await _authService.getAccessToken();
+  //     debugPrint('🔑 Token before API call: ${token != null ? "EXISTS (${token.length} chars)" : "NULL"}');
+
+  //     // Make API request with location parameters
+  //     final response = await _apiService.get(
+  //       '/restaurant-menu/nearest?lat=$lat&lng=$lng',
+  //       requiresAuth: true,
+  //     );
+
+  //     debugPrint('📥 Food items response received');
+  //     debugPrint('📦 Response structure: ${response.keys.toList()}');
+
+  //     // Handle different response formats
+  //     List<dynamic> itemsData = [];
+      
+  //     if (response['success'] == true) {
+  //       // Format 1: {success: true, data: [...]}
+  //       if (response['data'] is List) {
+  //         itemsData = response['data'] as List;
+  //       } 
+  //       // Format 2: {success: true, data: {items: [...]}}
+  //       else if (response['data'] is Map && response['data']['items'] is List) {
+  //         itemsData = response['data']['items'] as List;
+  //       }
+  //       // Format 3: {success: true, data: {menuItems: [...]}}
+  //       else if (response['data'] is Map && response['data']['menuItems'] is List) {
+  //         itemsData = response['data']['menuItems'] as List;
+  //       }
+  //     } 
+  //     // Format 4: Direct list [{...}, {...}]
+  //     else if (response is List) {
+  //       itemsData = response;
+  //     }
+  //     // Format 5: {items: [...]}
+  //     else if (response['items'] is List) {
+  //       itemsData = response['items'] as List;
+  //     }
+  //     // Format 6: {menuItems: [...]}
+  //     else if (response['menuItems'] is List) {
+  //       itemsData = response['menuItems'] as List;
+  //     }
+
+  //     if (itemsData.isEmpty) {
+  //       debugPrint('⚠️ No food items found in response');
+  //       if (mounted) {
+  //         setState(() {
+  //           _foodItems = [];
+  //           _isLoading = false;
+  //           _errorMessage = null;
+  //         });
+  //       }
+  //       return;
+  //     }
+
+  //     final items = itemsData
+  //         .map<FoodItem>((e) => FoodItem.fromJson(e as Map<String, dynamic>))
+  //         .toList();
+
+  //     // Extract unique cuisines and categories
+  //     final cuisineSet = <String>{};
+  //     final categorySet = <String>{};
+
+  //     for (var item in items) {
+  //       final c = item.cuisine?.trim();
+  //       final cat = item.category?.trim();
+  //       if (c != null && c.isNotEmpty) cuisineSet.add(c);
+  //       if (cat != null && cat.isNotEmpty) categorySet.add(cat);
+  //     }
+
+  //     if (!mounted) return;
+
+  //     setState(() {
+  //       _foodItems = items;
+  //       cuisines = ['All', ...cuisineSet.toList()..sort()];
+  //       categories = ['All', ...categorySet.toList()..sort()];
+  //       _isLoading = false;
+  //       _errorMessage = null;
+
+  //       // Ensure selected values are valid
+  //       if (!cuisines.contains(selectedCuisine)) selectedCuisine = 'All';
+  //       if (!categories.contains(selectedCategory)) selectedCategory = 'All';
+  //     });
+
+  //     debugPrint('✅ Loaded ${items.length} food items from nearest restaurant');
+      
+  //   } on ApiException catch (e) {
+  //     debugPrint('❌ API Error: ${e.message} (Status: ${e.statusCode})');
+      
+  //     if (mounted) {
+  //       setState(() {
+  //         _errorMessage = e.statusCode == 401 
+  //             ? 'Session expired. Please log in again.'
+  //             : e.message;
+  //         _isLoading = false;
+  //       });
+  //     }
+      
+  //   } catch (e) {
+  //     debugPrint('❌ Error fetching food items: $e');
+      
+  //     if (mounted) {
+  //       setState(() {
+  //         _errorMessage = 'Failed to load menu items. Please try again.';
+  //         _isLoading = false;
+  //       });
+  //     }
+  //   }
+  // }
 
   /// Apply filters to food items
   List<FoodItem> _applyFilters(List<FoodItem> foods) {
@@ -290,8 +394,10 @@ class _MenuScreenState extends State<MenuScreen> {
           //   onPressed: _checkAuthStatus,
           // ),
           IconButton(
-            icon: const Icon(Icons.shopping_cart, color: Color(0xFFE53935)),
-            onPressed: () => Navigator.pushNamed(context, '/cart'),
+            icon: const Icon(Icons.person, color: Color(0xFFE53935)),
+            onPressed: () {
+              Navigator.pushNamed(context, '/profile');
+            },
           ),
         ],
       ),
@@ -485,29 +591,39 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(8),
-              image: (food.imageUrl != null && food.imageUrl!.isNotEmpty)
-                  ? DecorationImage(
-                      image: NetworkImage(food.imageUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
+         Container(
+  width: 80,
+  height: 80,
+  decoration: BoxDecoration(
+    color: const Color(0xFFF5F5F5),
+    borderRadius: BorderRadius.circular(8),
+  ),
+  child: ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: (food.imageUrl != null && food.imageUrl!.isNotEmpty)
+        ? Image.network(
+            food.imageUrl!,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return const Center(
+                child: Icon(
+                  Icons.restaurant,
+                  size: 40,
+                  color: Color(0xFFE0E0E0),
+                ),
+              );
+            },
+          )
+        : const Center(
+            child: Icon(
+              Icons.restaurant,
+              size: 40,
+              color: Color(0xFFE0E0E0),
             ),
-            child: (food.imageUrl == null || food.imageUrl!.isEmpty)
-                ? const Center(
-                    child: Icon(
-                      Icons.restaurant,
-                      size: 40,
-                      color: Color(0xFFE0E0E0),
-                    ),
-                  )
-                : null,
           ),
+  ),
+)
+,
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -628,6 +744,8 @@ class _MenuScreenState extends State<MenuScreen> {
 // Add Item Sheet remains the same...
 class AddItemSheet extends StatefulWidget {
   final FoodItem food;
+      // print("❌food items: $Food");
+
   const AddItemSheet({super.key, required this.food});
 
   @override
@@ -789,15 +907,23 @@ class _AddItemSheetState extends State<AddItemSheet> {
 
   Future<void> _addToCart() async {
     final cartService = CartService();
+    // final item = CartItem(
+    //   foodId: widget.food.id,
+    //   quantity: _quantity,
+    //   selectedAddOns: [
+    //     if (_size == 'Large') AddOn(name: 'Large Size', price: 40),
+    //     if (_size == 'Small') AddOn(name: 'Small Size', price: -50),
+    //     AddOn(name: 'Spice: $_spice', price: 0),
+    //   ],
+    // );
     final item = CartItem(
-      foodId: widget.food.id,
-      quantity: _quantity,
-      selectedAddOns: [
-        if (_size == 'Large') AddOn(name: 'Large Size', price: 40),
-        if (_size == 'Small') AddOn(name: 'Small Size', price: -50),
-        AddOn(name: 'Spice: $_spice', price: 0),
-      ],
-    );
+  restaurantUid: widget.food.restaurantUid ?? "",
+  menuUid: widget.food.id,                    // <--- real id
+  menuName: widget.food.name,                 // <--- real name
+  price: widget.food.price ?? 0,              // <--- real price
+  qty: _quantity,
+);
+
 
     try {
       await cartService.addToCart(item);
@@ -861,6 +987,9 @@ class _AddItemSheetState extends State<AddItemSheet> {
     }
   }
 }
+
+
+
 
 // import 'dart:convert';
 // import 'package:flutter/material.dart';

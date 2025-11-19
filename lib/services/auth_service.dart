@@ -627,7 +627,9 @@ class AuthService {
       }
 
       final response = await _apiService.get(
-        '${ApiConfig.userProfileEndpoint}/$userId',
+// '${ApiConfig.userProfileEndpoint}/$userId',
+  ApiConfig.userProfileEndpoint,
+
         requiresAuth: true,
       );
 

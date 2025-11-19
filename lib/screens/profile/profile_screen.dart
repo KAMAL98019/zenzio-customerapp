@@ -568,6 +568,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:zenzio_customer/services/auth_service.dart';
 import '../../data/models/user_model.dart'; // ✅ Adjust this import path if needed
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
@@ -590,6 +591,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _loadUser();
   }
+
+//   Future<void> _loadUser() async {
+//   setState(() => _isLoading = true);
+
+//   try {
+//     final token = await storage.read(key: 'auth_token');
+//     final userId = await storage.read(key: 'user_id');
+
+//     if (token != null && userId != null) {
+//       // 👇 Call API from auth_service.dart
+//       final authService = AuthService();
+//       final fetchedUser = await authService.getUserProfile();
+
+//       setState(() {
+//         _user = fetchedUser;
+//       });
+
+//       print("✅ User profile refreshed from backend");
+//     } else {
+//       print("⚠️ Token or User ID missing");
+//     }
+
+//   } catch (e) {
+//     print("❌ Error fetching profile: $e");
+//   }
+
+//   setState(() => _isLoading = false);
+// }
+
 
  Future<void> _loadUser() async {
   setState(() => _isLoading = true);

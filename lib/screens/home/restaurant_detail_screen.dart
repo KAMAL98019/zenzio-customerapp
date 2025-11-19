@@ -1682,15 +1682,23 @@ class _AddItemSheetState extends State<AddItemSheet> {
               ),
             onPressed: () async {
   final cartService = CartService();
+  // final item = CartItem(
+  //   foodId: widget.food.id,
+  //   quantity: _quantity,
+  //   selectedAddOns: [
+  //     if (_size == 'Large') AddOn(name: 'Large Size', price: 40),
+  //     if (_size == 'Small') AddOn(name: 'Small Size', price: -50),
+  //     AddOn(name: 'Spice: $_spice', price: 0),
+  //   ],
+  // );
   final item = CartItem(
-    foodId: widget.food.id,
-    quantity: _quantity,
-    selectedAddOns: [
-      if (_size == 'Large') AddOn(name: 'Large Size', price: 40),
-      if (_size == 'Small') AddOn(name: 'Small Size', price: -50),
-      AddOn(name: 'Spice: $_spice', price: 0),
-    ],
-  );
+  restaurantUid: widget.food.restaurantUid ?? "",
+  menuUid: widget.food.id,                    // <--- real id
+  menuName: widget.food.foodName,                 // <--- real name
+  price: widget.food.price ?? 0,              // <--- real price
+  qty: _quantity,
+);
+
 
   try {
     await cartService.addToCart(item);

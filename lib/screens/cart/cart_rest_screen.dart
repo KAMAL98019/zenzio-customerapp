@@ -34,54 +34,55 @@ class _CartRestScreenState extends State<CartRestScreen> {
 
       print("🛒 FULL CART RESPONSE => $response");
 
-      if (response["success"] != true || response["carts"] == null) {
-        setState(() {
-          _restaurantCarts = [];
-          _isLoading = false;
-        });
-        return;
-      }
+    if (response["status"] != "success" || response["data"]?["cart"] == null) {
+  setState(() {
+    _restaurantCarts = [];
+    _isLoading = false;
+  });
+  return;
+}
 
-      List<RestaurantCart> carts = [];
+final cartData = response["data"]["cart"];
+final groups = cartData["groups"] as List<dynamic>? ?? [];
 
-      for (var cart in response["carts"]) {
-        final rest = cart["restaurant"];
-        final items = cart["items"];
+List<RestaurantCart> carts = [];
 
-        double grandTotal = 0;
-        for (var item in items) {
-          double price = double.tryParse(item["unitPrice"].toString()) ?? 0;
-          double addonPrice = 0;
+for (var group in groups) {
+  final restId = group["restaurant_uid"] ?? "";
+  final items = group["items"] as List<dynamic>? ?? [];
+  double subtotal = 0;
 
-          for (var addon in item["selectedAddOns"]) {
-            addonPrice += double.tryParse(addon["price"].toString()) ?? 0;
-          }
+  for (var item in items) {
+ final price = double.tryParse(item["price"].toString()) ?? 0;
+    final qty = int.tryParse(item["qty"].toString()) ?? 1;
 
-          grandTotal += (price + addonPrice) * item["quantity"];
-        }
+    subtotal += price * qty;  }
 
-        carts.add(
-          RestaurantCart(
-            restaurantName: rest["rest_name"],
-            description: rest["rest_address"],
-            totalItems: items.length,
-            grandTotal: grandTotal,
-            restId: rest["id"].toString(),
-          ),
-        );
-      }
+  carts.add(
+    RestaurantCart(
+      restaurantName: restId, // Or fetch name if API returns
+      description: "",
+      totalItems: items.length,
+      grandTotal: subtotal.toDouble(),
+      restId: restId,
+    ),
+  );
+}
 
-      setState(() {
-        _restaurantCarts = carts;
-        _isLoading = false;
-      });
-    } catch (e) {
-      print("❌ Cart Error: $e");
-      setState(() {
-        _isLoading = false;
-        _restaurantCarts = [];
-      });
-    }
+setState(() {
+  _restaurantCarts = carts;
+  _isLoading = false;
+});
+
+    }catch (e) {
+  print("❌ Cart Error: $e");
+  if (!mounted) return;   // ⛔ Prevent setState after dispose
+
+  setState(() {
+    _isLoading = false;
+    _restaurantCarts = [];
+  });
+}
   }
 
   // ========================= UI =========================
@@ -116,6 +117,8 @@ class _CartRestScreenState extends State<CartRestScreen> {
     return GestureDetector(
       onTap: () {
         Navigator.pushNamed(context, "/cart", arguments: cart.restId);
+            print("🛒 FULL CART RESPONSE => ${cart.restId}");
+
       },
       child: Container(
         padding: const EdgeInsets.all(16),

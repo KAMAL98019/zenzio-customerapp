@@ -85,6 +85,12 @@ Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
   Future<dynamic> get(String endpoint, {bool requiresAuth = false}) async {
     try {
       final headers = await _getHeaders(requiresAuth: requiresAuth);
+       headers.addAll({
+        'platform': ApiService.getPlatform(), 
+        'User-Agent': ApiService.getPlatform(),
+        'mode': 'development',
+        'clientId': ApiConfig.clientId,
+      });
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
       final response = await http
           .get(uri, headers: headers)

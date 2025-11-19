@@ -31,9 +31,11 @@ class ApiConfig {
   // ==================== CART ENDPOINTS ====================
   static const String cartEndpoint ='/cart'; // Get full cart for logged-in user
   static const String addToCartEndpoint = '/cart/add';
-  static const String restaurantItemsEndpoint = "/cart/restaurant"; // View items for a restaurant group(cart/restaurant/RES-123ABC/items)
-  static const String updateCartQtyEndpoint = '/cart/item/1';
-  static const String removeCartItemEndpoint = '/cart/item/1';
+  static String restaurantItemsEndpoint(String restaurantUid) {
+    return "/cart/restaurant/$restaurantUid/items";
+  }
+  static const String updateCartQtyEndpoint = '/cart/item';
+  static const String removeCartItemEndpoint = '/cart/item';
   static const String clearRestCartEndpoint ='/cart/group'; // Clear all items from a specific restaurant group
   static const String clearCartEndpoint ='/cart/clear'; // Clear the complete cart
 
@@ -60,10 +62,8 @@ class ApiConfig {
 
   // ==================== RESTAURANT ENDPOINTS ====================
   // static const String restaurantsEndpoint = '$apiVersion/restaurants';
-  static String restaurantDetailEndpoint(String id) =>
-      '$apiVersion/restaurants/$id';
-  static String restaurantMenuEndpoint(String id) =>
-      '$apiVersion/restaurants/$id/menu';
+  static String restaurantDetailEndpoint(String id) =>'$apiVersion/restaurants/$id';
+  static String restaurantMenuEndpoint(String id) =>'$apiVersion/restaurants/$id/menu';
 
   // ==================== ORDER ENDPOINTS ====================
   static const String ordersEndpoint = '$apiVersion/orders';

@@ -24,52 +24,97 @@ class CartService {
   // ============================
   // 2. ADD ITEM TO CART
   // ============================
-  Future<void> addToCart(CartItem item) async {
-    final body = {
-      "foodId": item.foodId,
-      "quantity": item.quantity,
-      "selectedAddOns": item.selectedAddOns
-          .map((a) => {"name": a.name, "price": a.price})
-          .toList(),
-    };
+Future<void> addToCart(CartItem item) async {
+  final body = {
+    "restaurant_uid":item.restaurantUid,
+    "menu_uid": item.menuUid.toString(),
+  "menu_name": item.menuName,
+  "price": item.price.toDouble(),
+  "qty": item.qty
 
+  
+
+    // "foodId": item.foodId,
+    // "quantity": item.quantity,
+    // "selectedAddOns": item.selectedAddOns
+    //     .map((a) => {"name": a.name, "price": a.price})
+    //     .toList(),
+  };
+
+  print("🛒 AddToCart Request => $body");
+
+  try {
     final response = await _api.post(
       ApiConfig.addToCartEndpoint,
       body: body,
       requiresAuth: true,
     );
 
-    print("🛒 AddToCart => $response");
+    print("🛒 AddToCart Response => $response");
+
+    // Optionally check for backend errors
+    if (response == null) {
+      throw Exception("No response from server");
+    }
+    if (response['error'] != null) {
+      throw Exception(response['error']);
+    }
+
+  } on ApiException catch (e) {
+    // If your _api.post throws ApiException
+    print("❌ API Error: ${e.message} (Status: ${e.statusCode})");
+    rethrow; // pass it to the UI for SnackBar
+  } catch (e) {
+    // Network or unexpected errors
+    print("❌ Add to cart failed: $e");
+    rethrow; // pass it to UI
   }
+}
+
+// ============================
+//  GET ITEMS BY RESTAURANT
+// URL → /cart/restaurant/:id/items
+// ============================
+Future<List<dynamic>> fetchRestaurantItems(String restaurantId) async {
+  final endpoint = ApiConfig.restaurantItemsEndpoint(restaurantId); 
+  final response = await _api.get(endpoint, requiresAuth: true);
+
+  print("🍽 Restaurant Items => $response");
+
+  return response["data"]?["items"] ?? [];
+}
+
+
 
   // ============================
-  // 3. UPDATE CART ITEM QUANTITY
+  //  UPDATE CART ITEM QUANTITY
   // URL → /cart/item/:id
   // ============================
-  Future<void> updateItemQuantity(String itemId, int quantity) async {
-    final body = {"quantity": quantity};
+Future<void> updateItemQuantity(String itemId, int quantity) async {
+  final body = { "qty": quantity };
 
-    final response = await _api.put(
-      "${ApiConfig.updateCartQtyEndpoint}/$itemId",
-      body: body,
-      requiresAuth: true,
-    );
+  final response = await _api.put(
+    "${ApiConfig.updateCartQtyEndpoint}/$itemId",
+    body: body,
+    requiresAuth: true,
+  );
 
-    print("🔄 Update Quantity => $response");
-  }
+  print("🔄 Update Quantity => $response");
+}
+
 
   // ============================
   // 4. REMOVE ITEM FROM CART
-  // URL → /cart/item/:id
+  // URL → /cart/item/:idz
   // ============================
-  Future<void> removeCartItem(String itemId) async {
-    final response = await _api.delete(
-      "${ApiConfig.removeCartItemEndpoint}/$itemId",
-      requiresAuth: true,
-    );
+ Future<void> removeCartItem(String itemId) async {
+  final response = await _api.delete(
+    "${ApiConfig.removeCartItemEndpoint}/$itemId",
+    requiresAuth: true,
+  );
 
-    print("❌ Remove Cart Item => $response");
-  }
+  print("❌ Remove Cart Item => $response");
+}
 
   // ============================
   // 5. CLEAR CART (ALL RESTAURANTS)
@@ -97,20 +142,6 @@ class CartService {
     print("🗑 Clear Restaurant Cart => $response");
   }
 
-  // ============================
-  // 7. GET ITEMS BY RESTAURANT
-  // URL → /cart/restaurant/:id/items
-  // ============================
-  Future<List<dynamic>> fetchRestaurantItems(String restaurantId) async {
-    final response = await _api.get(
-      "${ApiConfig.restaurantItemsEndpoint}/$restaurantId/items",
-      requiresAuth: true,
-    );
-
-    print("🍽 Restaurant Items => $response");
-
-    return response["data"]?["items"] ?? [];
-  }
 }
 
 //main import 'dart:convert';
