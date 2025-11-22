@@ -139,11 +139,34 @@ Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
       throw ApiException('PUT request failed: $e');
     }
   }
+
+// PATCH
+Future<dynamic> patch(String endpoint,
+    {required Map<String, dynamic> body, bool requiresAuth = false}) async {
+  try {
+    final headers = await _getHeaders(requiresAuth: requiresAuth);
+    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+    final response = await http
+        .patch(uri, headers: headers, body: jsonEncode(body))
+        .timeout(ApiConfig.connectTimeout);
+    return _handleResponse(response);
+  } catch (e) {
+    throw ApiException('PATCH request failed: $e');
+  }
+}
+
+
   // DELETE
   Future<dynamic> delete(String endpoint,
       {Map<String, dynamic>? body, bool requiresAuth = false}) async {
     try {
       final headers = await _getHeaders(requiresAuth: requiresAuth);
+      headers.addAll({
+        'platform': ApiService.getPlatform(), 
+        'User-Agent': ApiService.getPlatform(),
+        'mode': 'development',
+        'clientId': ApiConfig.clientId,
+      });
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
 
       // http.delete supports a body param (string) — encode if provided

@@ -84,7 +84,19 @@ Future<List<dynamic>> fetchRestaurantItems(String restaurantId) async {
   return response["data"]?["items"] ?? [];
 }
 
+ // ============================
+  // ✅ NEW: GET CART DETAILS WITH cart_group_uid
+  // URL → /cart/restaurant/:id
+  // ============================
+  Future<Map<String, dynamic>> getCartDetails(String restaurantId) async {
+    final endpoint = ApiConfig.restaurantItemsEndpoint(restaurantId);
+    final response = await _api.get(endpoint, requiresAuth: true);
 
+    print("🍽 Cart Details => $response");
+
+    // Return the entire data object which includes cart_group_uid
+    return response["data"] ?? {};
+  }
 
   // ============================
   //  UPDATE CART ITEM QUANTITY
@@ -93,7 +105,7 @@ Future<List<dynamic>> fetchRestaurantItems(String restaurantId) async {
 Future<void> updateItemQuantity(String itemId, int quantity) async {
   final body = { "qty": quantity };
 
-  final response = await _api.put(
+  final response = await _api.patch(
     "${ApiConfig.updateCartQtyEndpoint}/$itemId",
     body: body,
     requiresAuth: true,
@@ -101,7 +113,6 @@ Future<void> updateItemQuantity(String itemId, int quantity) async {
 
   print("🔄 Update Quantity => $response");
 }
-
 
   // ============================
   // 4. REMOVE ITEM FROM CART
@@ -141,6 +152,8 @@ Future<void> updateItemQuantity(String itemId, int quantity) async {
 
     print("🗑 Clear Restaurant Cart => $response");
   }
+
+
 
 }
 

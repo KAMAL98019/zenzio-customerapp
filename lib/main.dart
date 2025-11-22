@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:zenzio_customer/screens/auth/VerifyEmailScreen.dart';
 import 'package:zenzio_customer/screens/home/home1_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -38,14 +39,26 @@ import 'services/auth_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
     await Firebase.initializeApp();
+     await requestInitialPermissions();
+
   // Initialize auth service to load token
   await AuthService().initialize();
   
   runApp(const ZenzioApp());
 }
 
+
+Future<void> requestInitialPermissions() async {
+  await [
+    Permission.location,
+    Permission.camera,
+    Permission.photos,
+    Permission.storage,
+  ].request();
+}
 class ZenzioApp extends StatelessWidget {
   const ZenzioApp({super.key});
+
 
   @override
   Widget build(BuildContext context) {
@@ -121,6 +134,7 @@ class ZenzioApp extends StatelessWidget {
         '/chat-assistant': (context) => const ChatAssistantScreen(),
         '/my-coupons': (context) => const MyCouponsScreen(),
       },
+      
       //      onGenerateRoute: (settings) {
       //   if (settings.name == '/booking-details') {
       //     // final args = settings.arguments as Map<String, dynamic>;

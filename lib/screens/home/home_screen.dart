@@ -920,6 +920,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+//  Future<String?> fetchPresignedUrl(String fileKey) async {
+//   try {
+//     final response = await ApiService().get('/file/view/$fileKey', requiresAuth: true);
+//     return response['fileUrl'] as String?;
+//   } catch (e) {
+//     print('Failed to fetch pre-signed URL: $e');
+//     return null;
+//   }
+// }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1094,24 +1105,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Restaurant card UI
   Widget _buildRestaurantCard(Map<String, dynamic> restaurant) {
-    final String name = restaurant['rest_name'] ?? 'Unknown';
+    final String name = restaurant['restaurant_name'] ?? 'Unknown';
+    final String restaurant_uid = restaurant['restaurant_uid'] ?? 'Unknown';
     final String address = restaurant['rest_address'] ?? '';
     final String avgCost = restaurant['avg_cost_two']?.toString() ?? '0';
     final String imagePath = restaurant['rest_logo'] ?? '';
+     final profile = restaurant['profile'] ?? {};
+  final List photos = profile['photo'] ?? [];
 
-    final String imageUrl = imagePath.isNotEmpty
-        ? 'https://backend.zenzio.in${imagePath.replaceFirst("/root/choozy-backend", "")}'
-        : '';
+    final String imageUrl = photos.isNotEmpty ? photos.first : "";
 
     return GestureDetector(
       onTap: () {
         // Navigate to restaurant detail
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (context) => RestaurantDetailScreen(restaurant: restaurant),
-        //   ),
-        // );
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RestaurantDetailScreen(restaurantId: restaurant_uid),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),

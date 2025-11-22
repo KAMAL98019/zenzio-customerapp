@@ -38,9 +38,21 @@ class ApiConfig {
   static const String removeCartItemEndpoint = '/cart/item';
   static const String clearRestCartEndpoint ='/cart/group'; // Clear all items from a specific restaurant group
   static const String clearCartEndpoint ='/cart/clear'; // Clear the complete cart
+   static const String cartTransaction = "/cart-transactions";
+  static const String createOrder = "/cart-transactions";
+
+  // ==================== PAYMENT ENDPOINTS ====================
+  static const String createRazorpayOrderEndpoint = "/payments/create-order";
+  static const String verifyPaymentEndpoint = "/payments/verify";
+
+  // ==================== RATINGS ENDPOINTS ====================
+  static const String customerRestaurantRating = "/rating/cust-restaurant";
+  static const String customerFleetRating = "/rating/fleet-cust";
+  static const String customerAppRating = "/rating/cus-app";
 
 
-
+  static const Duration connectTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(seconds: 30);
 
 
 
@@ -86,8 +98,8 @@ class ApiConfig {
   // static const String clearCartEndpoint = '$apiBaseUrl/carts/clear';
 
   // ==================== PAYMENT ENDPOINTS ====================
-  static const String paymentMethodsEndpoint = '$apiVersion/payment-methods';
-  static const String processPaymentEndpoint = '$apiVersion/payments/process';
+  // static const String paymentMethodsEndpoint = '$apiVersion/payment-methods';
+  // static const String processPaymentEndpoint = '$apiVersion/payments/process';
 
   // ==================== COUPON ENDPOINTS ====================
   static const String couponsEndpoint = '$apiVersion/coupons';
@@ -113,8 +125,73 @@ class ApiConfig {
 
   // ==================== TIMEOUTS ====================
 
-  static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
 
-  static foodsByRestaurantEndpoint(String restaurantId) {}
+  // static foodsByRestaurantEndpoint(String restaurantId) {}
+  
 }
+
+
+class RazorpayConfig {
+   // For Testing (Sandbox/Test Mode)
+  static const String testKeyId = 'rzp_test_RhCBzg8fXhO9GQ';
+  
+  // For Production (Live Mode)
+  static const String liveKeyId = ''; 
+  
+  // Environment flag
+  static const bool isProduction = false; // Set to true for production
+  
+  static String get currentKeyId {
+    return isProduction ? liveKeyId : testKeyId;
+  }
+}
+
+
+
+// class RazorpayConfig {
+//   // ⚠️ IMPORTANT: Replace these with your actual Razorpay keys
+//   // Get your keys from: https://dashboard.razorpay.com/app/keys
+  
+//   // For Testing (Sandbox/Test Mode)
+//   static const String testKeyId = 'rzp_test_xxxxxxxxxxx'; // ⚠️ Replace with your test key
+//   static const String testKeySecret = 'your_test_secret_key'; // Only for backend
+  
+//   // For Production (Live Mode)
+//   static const String liveKeyId = 'rzp_live_xxxxxxxxxxx'; // ⚠️ Replace with your live key
+//   static const String liveKeySecret = 'your_live_secret_key'; // Only for backend
+  
+//   // Environment flag
+//   static const bool isProduction = false; // Set to true for production
+  
+//   // Get the current key based on environment
+//   static String get currentKeyId {
+//     return isProduction ? liveKeyId : testKeyId;
+//   }
+  
+//   // ⚠️ NEVER expose secret key in frontend
+//   // Secret keys should ONLY be used in backend
+  
+//   // Razorpay Test Cards (for testing)
+//   static const String testCardNumber = '4111 1111 1111 1111';
+//   static const String testCardCVV = '123';
+//   static const String testCardExpiry = '12/25';
+  
+//   // Test UPI ID
+//   static const String testUpiId = 'success@razorpay';
+// }
+
+// /* 
+//  * HOW TO GET YOUR RAZORPAY KEYS:
+//  * 
+//  * 1. Sign up at https://razorpay.com
+//  * 2. Go to Dashboard: https://dashboard.razorpay.com
+//  * 3. Navigate to Settings → API Keys
+//  * 4. Generate keys for Test Mode (for development)
+//  * 5. Later, generate keys for Live Mode (for production)
+//  * 
+//  * SECURITY NOTES:
+//  * - NEVER commit actual keys to Git
+//  * - Use environment variables for production
+//  * - Key ID (rzp_test_xxx) is safe for frontend
+//  * - Key Secret should ONLY be in backend
+//  */

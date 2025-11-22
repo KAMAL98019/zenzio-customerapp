@@ -20,14 +20,13 @@ class _CartScreenState extends State<CartScreen> {
   List<CartItem> _cartItems = [];
   String _restaurantName = "Loading...";
   String? _restaurantId;
-  String? _cartId;
+  String? _cartGroupUid; // ✅ Added to store cart_group_uid
   double _deliveryFee = 0;
   double _taxes = 0;
 
   @override
   void initState() {
     super.initState();
-    // ❌ Don't call fetch here
   }
 
   @override
@@ -40,36 +39,59 @@ class _CartScreenState extends State<CartScreen> {
       print("📌 Received Restaurant ID => $_restaurantId");
     }
 
-    _fetchCartData(); // ✅ Now safe
+    _fetchCartData();
   }
+
   Future<void> _fetchCartData() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     String? errorMessage;
     try {
       final tokenService = TokenService();
       final userId = await tokenService.getUserId();
       if (userId == null) throw Exception("User ID not found");
 
-      // Fetch restaurant items using CartService
       if (_restaurantId != null) {
-        final items = await _cartService.fetchRestaurantItems(_restaurantId!);
-    _cartItems = items.map((item) {
-  print("🔹 Mapping item raw data => $item");
+        // ✅ Use getCartDetails instead of fetchRestaurantItems to get cart_group_uid
+        final cartDetails = await _cartService.getCartDetails(_restaurantId!);
+        final items = cartDetails["items"] ?? [];
+        
+        // ✅ Extract cart_group_uid
+        _cartGroupUid = cartDetails["cart_group_uid"];
+        print("✅ Cart Group UID: $_cartGroupUid");
 
-  double unitPrice = double.tryParse(item['price']?.toString() ?? "0") ?? 0;
+        print("🔹 Fetched ${items.length} items from API");
 
-  const String dummyImage = "https://via.placeholder.com/150";
+        _cartItems = items.map<CartItem>((item) {
+          print("🔹 Raw item data => $item");
 
-return CartItem(
-  id: item['id'].toString(),            // <--- API ID
-  uid: item['cart_item_uid'], 
- name: item['menu_name'] ?? "Unknown Dish",
-  price: unitPrice.toInt(),
-  quantity: item['qty'] ?? 1,
-  image: dummyImage,
-);
+          // ✅ CRITICAL: Use database ID for API calls
+          int dbId = item['id'] ?? 0;
+          String cartItemUid = item['cart_item_uid'] ?? '';
+          
+          double unitPrice = double.tryParse(item['price']?.toString() ?? "0") ?? 0;
+          int quantity = item['qty'] ?? 1;
+          
+          const String dummyImage = "https://via.placeholder.com/150";
 
-}).toList();
+          print("✅ Mapped: dbId=$dbId, uid=$cartItemUid, qty=$quantity");
 
+          return CartItem(
+            id: dbId,             // ✅ Database ID for API calls
+            uid: cartItemUid,     // UID for reference
+            name: item['menu_name'] ?? "Unknown Dish",
+            price: unitPrice.toInt(),
+            quantity: quantity,
+            image: dummyImage,
+          );
+        }).toList();
+
+        print("✅ Total cart items mapped: ${_cartItems.length}");
       }
 
       _restaurantName = _restaurantId ?? "Unknown Restaurant";
@@ -77,6 +99,7 @@ return CartItem(
       _taxes = _cartItems.isNotEmpty ? (_itemTotal * 0.05) : 0;
     } catch (e) {
       errorMessage = "⚠️ Error loading cart: $e";
+      print(errorMessage);
     } finally {
       if (!mounted) return;
       setState(() {
@@ -86,45 +109,52 @@ return CartItem(
     }
   }
 
-  Future<void> _updateQuantity(String itemId, int quantity) async {
-  try {
-    await _cartService.updateItemQuantity(itemId, quantity);
-    debugPrint("✅ Quantity updated: $itemId -> $quantity");
-  } catch (e) {
-    debugPrint("❌ Error updating quantity: $e");
-  }
-}
+  Future<void> _updateQuantity(int itemId, int quantity) async {
+    print('📤 Updating item => ID: $itemId, Quantity: $quantity');
+    
+    if (itemId <= 0) {
+      throw Exception('Invalid item ID');
+    }
+    
+    if (quantity < 1) {
+      throw Exception('Quantity must be at least 1');
+    }
 
-Future<void> _removeItem(String itemId, String restaurantId) async {
-  try {
-    await _cartService.removeCartItem(itemId);
-    debugPrint("✅ Item removed: $itemId");
-  } catch (e) {
-    debugPrint("❌ Error removing item: $e");
+    try {
+      await _cartService.updateItemQuantity(itemId.toString(), quantity);
+      print("✅ Quantity updated successfully: $itemId -> $quantity");
+    } catch (e) {
+      print("❌ Error updating quantity: $e");
+      rethrow;
+    }
   }
-}
+
+  Future<void> _removeItem(int itemId) async {
+    print('📤 Removing item => ID: $itemId');
+
+    if (itemId <= 0) {
+      throw Exception('Invalid item ID');
+    }
+
+    try {
+      await _cartService.removeCartItem(itemId.toString());
+      print("🗑️ Item removed successfully: $itemId");
+    } catch (e) {
+      print("❌ Error removing item: $e");
+      rethrow;
+    }
+  }
 
   double get _itemTotal {
     return _cartItems.fold(
-      0,
+      0.0,
       (sum, item) => sum + (item.price * item.quantity),
     );
   }
 
-  // Future<Map<String, dynamic>?> _createPaymentOrder() async {
-  //   try {
-  //     final tokenService = TokenService();
-  //     final userId = await tokenService.getUserId();
-  //     if (userId == null || _cartId == null) return null;
-
-  //     return await _cartService.createPaymentOrder(userId, _cartId!);
-  //   } catch (e) {
-  //     debugPrint("❌ Error creating payment order: $e");
-  //     return null;
-  //   }
-  // }
-
-  
+  double get _grandTotal {
+    return _itemTotal + _deliveryFee + _taxes;
+  }
 
   @override
   void dispose() {
@@ -151,9 +181,23 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
           elevation: 0,
         ),
         body: Center(
-          child: Text(
-            _errorMessage!,
-            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _errorMessage!,
+                style: const TextStyle(fontSize: 16, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _fetchCartData,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE53935),
+                ),
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         ),
       );
@@ -214,22 +258,37 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Text(
-                            _restaurantName.isNotEmpty
-                                ? _restaurantName
-                                : "Update later",
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF2D2D2D),
+                          Expanded(
+                            child: Text(
+                              _restaurantName.isNotEmpty
+                                  ? _restaurantName
+                                  : "Update later",
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2D2D2D),
+                              ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      ..._cartItems.map((item) => _buildCartItem(item)),
+                      if (_cartItems.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32),
+                          child: Center(
+                            child: Text(
+                              'Your cart is empty',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFF757575),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        ..._cartItems.map((item) => _buildCartItem(item)),
                       const SizedBox(height: 12),
-                      // Add More Items
                       TextButton.icon(
                         onPressed: () async {
                           if (_restaurantId == null ||
@@ -252,8 +311,8 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
                               ),
                             ),
                           );
+
                           await _fetchCartData();
-                          setState(() {});
                         },
                         icon: const Icon(Icons.add, color: Color(0xFFE53935)),
                         label: const Text(
@@ -309,7 +368,13 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Coupon feature coming soon!'),
+                          ),
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE53935),
                         foregroundColor: Colors.white,
@@ -357,8 +422,8 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildBillRow('Item Total', '₹${_itemTotal.toInt()}'),
-                      _buildBillRow('Delivery Fee', '₹${_deliveryFee.toInt()}'),
+                      _buildBillRow('Item Total', '₹${_itemTotal.toStringAsFixed(2)}'),
+                      _buildBillRow('Delivery Fee', '₹${_deliveryFee.toStringAsFixed(2)}'),
                       _buildBillRow(
                         'Taxes & Charges',
                         '₹${_taxes.toStringAsFixed(2)}',
@@ -376,7 +441,7 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
                             ),
                           ),
                           Text(
-                            '₹${(_itemTotal + _deliveryFee + _taxes).toStringAsFixed(2)}',
+                            '₹${_grandTotal.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -407,40 +472,29 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _cartItems.isEmpty
+                onPressed: _cartItems.isEmpty || _cartGroupUid == null
                     ? null
                     : () async {
-                        final paymentData = await _createPaymentOrder();
-                        if (paymentData != null && paymentData['success'] == true) {
-                          final userId = await TokenService().getUserId();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CheckoutScreen(
-                                userId: userId!,
-                                cartId: _cartId!,
-                                total: _itemTotal + _deliveryFee + _taxes,
-                                totalAmount: _itemTotal + _deliveryFee + _taxes,
-                                restaurantId: _restaurantId!,
-                                razorpayOrderId: paymentData['razorpayOrderId'],
-                                currency: paymentData['currency'],
-                                amount: paymentData['amount'],
-                                key: paymentData['key'],
-                              ),
+                        // ✅ Navigate to CheckoutScreen with all necessary data
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CheckoutScreen(
+                              cartGroupUid: _cartGroupUid!,
+                              restaurantId: _restaurantId!,
+                              cartItems: _cartItems,
+                              itemTotal: _itemTotal,
+                              deliveryFee: _deliveryFee,
+                              taxes: _taxes,
+                              grandTotal: _grandTotal,
                             ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Failed to create payment order.'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
+                          ),
+                        );
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFE53935),
                   foregroundColor: Colors.white,
+                  // disabledBackgroundColor: Colors.grey[300],
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -462,37 +516,42 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
       margin: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-        Container(
-  width: 60,
-  height: 60,
-  decoration: BoxDecoration(
-    color: const Color(0xFFF5F5F5),
-    borderRadius: BorderRadius.circular(8),
-  ),
-  child: item.image.isNotEmpty
-      ? Image.network(
-  item.image,
-  fit: BoxFit.cover,
-  errorBuilder: (context, error, stackTrace) {
-    return Image.network("https://via.placeholder.com/150");
-  },
-)
-
-      : const Icon(Icons.fastfood, color: Color(0xFFE0E0E0)),
-),
-
-
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: item.image.isNotEmpty
+                ? Image.network(
+                    item.image,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.fastfood, color: Color(0xFFE0E0E0));
+                    },
+                  )
+                : const Icon(Icons.fastfood, color: Color(0xFFE0E0E0)),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.name.isNotEmpty ? item.name : "Update later",
+                  item.name.isNotEmpty ? item.name : "Unknown Item",
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF2D2D2D),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '₹${item.price} each',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF757575),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -501,8 +560,28 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
                     GestureDetector(
                       onTap: () async {
                         if (item.quantity > 1) {
-                          setState(() => item.quantity--);
-                          await _updateQuantity(item.id, item.quantity);
+                          final newQty = item.quantity - 1;
+
+                          try {
+                            // API call with database ID
+                            await _updateQuantity(item.id, newQty);
+
+                            if (!mounted) return;
+
+                            // Update UI after successful API call
+                            setState(() {
+                              item.quantity = newQty;
+                              _taxes = _itemTotal * 0.05;
+                            });
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to update: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         }
                       },
                       child: Container(
@@ -530,8 +609,28 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
                     ),
                     GestureDetector(
                       onTap: () async {
-                        setState(() => item.quantity++);
-                        await _updateQuantity(item.id, item.quantity);
+                        final newQty = item.quantity + 1;
+
+                        try {
+                          // API call with database ID
+                          await _updateQuantity(item.id, newQty);
+
+                          if (!mounted) return;
+
+                          // Update UI after successful API call
+                          setState(() {
+                            item.quantity = newQty;
+                            _taxes = _itemTotal * 0.05;
+                          });
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to update: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.all(4),
@@ -555,7 +654,7 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '₹${item.price}',
+                '₹${(item.price * item.quantity).toStringAsFixed(2)}',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -565,11 +664,32 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: () async {
-                  setState(() {
-                    _cartItems.remove(item);
-                  });
-                  if (_restaurantId != null) {
-                    await _removeItem(item.id, _restaurantId!);
+                  try {
+                    // Remove from API using database ID
+                    await _removeItem(item.id);
+
+                    if (!mounted) return;
+
+                    // Update UI after successful removal
+                    setState(() {
+                      _cartItems.remove(item);
+                      _taxes = _cartItems.isNotEmpty ? (_itemTotal * 0.05) : 0;
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Item removed from cart'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to remove: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                   }
                 },
                 child: const Row(
@@ -620,31 +740,29 @@ Future<void> _removeItem(String itemId, String restaurantId) async {
       ),
     );
   }
-  
-  Future _createPaymentOrder() async {}
 }
 
+// ✅ FIXED CartItem Model
 class CartItem {
-String id;        // USE THIS FOR API
-  String uid;       // cart_item_uid
+  int id;         // Database ID (e.g., 1, 16) - Used for API calls
+  String uid;     // cart_item_uid (e.g., "CITEM-GYK16Y9") - For reference
   String name;
   int price;
   int quantity;
   String image;
 
   CartItem({
-    required this.id,      // cart_item_uid
-    required this.uid,  // db id
+    required this.id,       // This should be the numeric database ID
+    required this.uid,      // This should be cart_item_uid
     required this.name,
     required this.price,
     required this.quantity,
     required this.image,
   });
-}
+}  
 
 
-
-// import 'dart:convert';
+// main import 'dart:convert';
 // import 'package:flutter/material.dart';
 // import 'package:http/http.dart' as http;
 // import 'package:shared_preferences/shared_preferences.dart';
