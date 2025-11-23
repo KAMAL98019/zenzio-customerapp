@@ -668,7 +668,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
-          onPressed: () => Navigator.pop(context),
+         onPressed: () {
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/main-navigation',
+      (route) => false,   // 🔥 clears stack → direct to home
+    );
+  },
         ),
         title: const Text(
           'My Profile',

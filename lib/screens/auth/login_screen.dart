@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../../widgets/logo_widget.dart';
 import '../../widgets/custom_button.dart';
 import '../../core/constants/app_colors.dart';
@@ -31,93 +30,6 @@ class _LoginScreenState extends State<LoginScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   _requestAppPermissions();
-    // });
-  }
-
- Future<void> _requestAppPermissions() async {
-  List<Permission> permissions = [
-    Permission.location,
-    Permission.camera,
-    Permission.photos,
-    Permission.storage,
-  ];
-
-  List<Permission> toRequest = [];
-  for (var permission in permissions) {
-    if (!await permission.isGranted) {
-      toRequest.add(permission);
-    }
-  }
-
-  if (toRequest.isNotEmpty) {
-    Map<Permission, PermissionStatus> statuses = await toRequest.request();
-
-    final newlyDenied = statuses.entries
-        .where((entry) => entry.value.isDenied || entry.value.isPermanentlyDenied)
-        .map((entry) => entry.key)
-        .toList();
-
-    if (newlyDenied.isNotEmpty) {
-      _showPermissionDeniedDialog(newlyDenied);
-    }
-  }
-}
-
-
-  // Future<Map<Permission, PermissionStatus>> _requestPermissions() async {
-  //   Map<Permission, PermissionStatus> statuses = await [
-  //     Permission.location,
-  //     Permission.camera,
-  //     Permission.photos,
-  //     Permission.storage,
-  //   ].request();
-
-  //   return statuses;
-  // }
-
-  void _showPermissionDeniedDialog(List<Permission> deniedPermissions) {
-    // Build a friendly message listing only denied permissions
-    String deniedList = deniedPermissions
-        .map((p) {
-          switch (p) {
-            case Permission.location:
-              return 'Location';
-            case Permission.camera:
-              return 'Camera';
-            case Permission.photos:
-              return 'Photos';
-            case Permission.storage:
-              return 'Storage';
-            default:
-              return p.toString();
-          }
-        })
-        .join(', ');
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Permissions Required'),
-        content: Text(
-          'The following permissions are required to work properly: $deniedList',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              openAppSettings();
-              Navigator.pop(context);
-            },
-            child: const Text('Open Settings'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -194,11 +106,6 @@ class _LoginScreenState extends State<LoginScreen>
       _showErrorDialog('Please enter both email and password');
       return;
     }
-
-    // if (!RegExp(r'^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}\$').hasMatch(email)) {
-    //   _showErrorDialog('Please enter a valid email address');
-    //   return;
-    // }
 
     setState(() => _isLoading = true);
 
@@ -289,7 +196,19 @@ class _LoginScreenState extends State<LoginScreen>
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 40),
-                  const LogoWidget(),
+                  Image.asset(
+                    'assets/images/zenzioicon.png',
+                    height: 90,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Text(
+                          'Zenzio',
+                          style: TextStyle(
+                            fontSize: 42,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Welcome Back!',

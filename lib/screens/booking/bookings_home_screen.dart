@@ -30,10 +30,10 @@ class _BookingsHomeScreenState extends State<BookingsHomeScreen> {
           ),
         ),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        // leading: IconButton(
+        //   icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
+        //   onPressed: () => Navigator.pop(context),
+        // ),
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Color(0xFF2D2D2D)),

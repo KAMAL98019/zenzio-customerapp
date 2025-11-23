@@ -10,7 +10,6 @@ import '../../data/models/cart_model.dart';
 import '../../services/cart_service.dart';
 
 class MenuScreen extends StatefulWidget {
-  
   const MenuScreen({super.key});
 
   @override
@@ -383,10 +382,10 @@ Future<void> fetchFoodItems(double lat, double lng) async {
         backgroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        // leading: IconButton(
+        //   icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
+        //   onPressed: () => Navigator.pop(context),
+        // ),
         actions: [
           // Debug button
           // IconButton(

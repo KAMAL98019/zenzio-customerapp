@@ -795,7 +795,7 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Initialize screen and load data
   Future<void> _initializeScreen() async {
     // Wait for frame to be rendered
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future.delayed(const Duration(milliseconds: 50));
     
     // Check if user is logged in
     final token = await storage.read(key: 'auth_token');
@@ -818,7 +818,7 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         
         // Navigate to login after delay
-        Future.delayed(const Duration(seconds: 2), () {
+        Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
             Navigator.pushReplacementNamed(context, '/');
           }
@@ -1104,127 +1104,131 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Restaurant card UI
-  Widget _buildRestaurantCard(Map<String, dynamic> restaurant) {
-    final String name = restaurant['restaurant_name'] ?? 'Unknown';
-    final String restaurant_uid = restaurant['restaurant_uid'] ?? 'Unknown';
-    final String address = restaurant['rest_address'] ?? '';
-    final String avgCost = restaurant['avg_cost_two']?.toString() ?? '0';
-    final String imagePath = restaurant['rest_logo'] ?? '';
-     final profile = restaurant['profile'] ?? {};
+  // In your HomeScreen _buildRestaurantCard method, update the onTap:
+
+Widget _buildRestaurantCard(Map<String, dynamic> restaurant) {
+  final String name = restaurant['restaurant_name'] ?? 'Unknown';
+  final String restaurant_uid = restaurant['restaurant_uid'] ?? 'Unknown';
+  final String address = restaurant['rest_address'] ?? '';
+  final String avgCost = restaurant['avg_cost_two']?.toString() ?? '0';
+  final String imagePath = restaurant['rest_logo'] ?? '';
+  final profile = restaurant['profile'] ?? {};
   final List photos = profile['photo'] ?? [];
 
-    final String imageUrl = photos.isNotEmpty ? photos.first : "";
+  final String imageUrl = photos.isNotEmpty ? photos.first : "";
 
-    return GestureDetector(
-      onTap: () {
-        // Navigate to restaurant detail
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => RestaurantDetailScreen(restaurantId: restaurant_uid),
+  return GestureDetector(
+    onTap: () {
+      // ✅ Navigate with complete restaurant data
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RestaurantDetailScreen(
+            restaurantData: restaurant, // Pass the entire restaurant map
           ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            )
-          ],
         ),
-        child: Row(
-          children: [
-            // Restaurant image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 80,
-                          height: 80,
-                          color: Colors.grey[300],
-                          child: const Icon(
-                            Icons.restaurant,
-                            size: 40,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
-                    )
-                  : Container(
-                      width: 80,
-                      height: 80,
-                      color: Colors.grey[300],
-                      child: const Icon(
-                        Icons.restaurant,
-                        size: 40,
-                        color: Colors.grey,
-                      ),
+      );
+    },
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          // Restaurant image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.restaurant,
+                          size: 40,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    width: 80,
+                    height: 80,
+                    color: Colors.grey[300],
+                    child: const Icon(
+                      Icons.restaurant,
+                      size: 40,
+                      color: Colors.grey,
                     ),
-            ),
-            const SizedBox(width: 12),
+                  ),
+          ),
+          const SizedBox(width: 12),
 
-            // Restaurant info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          // Restaurant info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF2D2D2D),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                if (address.isNotEmpty)
                   Text(
-                    name,
+                    address,
                     style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF2D2D2D),
+                      fontSize: 13,
+                      color: Color(0xFF9E9E9E),
                     ),
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  if (address.isNotEmpty)
-                    Text(
-                      address,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Color(0xFF9E9E9E),
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  const SizedBox(height: 6),
-                  Text(
-                    "₹$avgCost for two",
-                    style: const TextStyle(
-                      color: Color(0xFFE53935),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
+                const SizedBox(height: 6),
+                Text(
+                  "₹$avgCost for two",
+                  style: const TextStyle(
+                    color: Color(0xFFE53935),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // Arrow icon
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Color(0xFF9E9E9E),
-            ),
-          ],
-        ),
+          // Arrow icon
+          const Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: Color(0xFF9E9E9E),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

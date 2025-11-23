@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:zenzio_customer/screens/auth/VerifyEmailScreen.dart';
 import 'package:zenzio_customer/screens/home/home1_screen.dart';
+import 'package:zenzio_customer/widgets/app_back_handler.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/otp_verify_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -35,11 +36,13 @@ import 'screens/profile/chat_assistant_screen.dart';
 import 'screens/profile/my_coupons_screen.dart';
 import 'services/auth_service.dart';
 
+bool _permissionsRequested = false;
+
 // ✅ Initialize auth service before app starts
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
     await Firebase.initializeApp();
-     await requestInitialPermissions();
+     requestInitialPermissions();
 
   // Initialize auth service to load token
   await AuthService().initialize();
@@ -48,7 +51,10 @@ void main() async {
 }
 
 
-Future<void> requestInitialPermissions() async {
+  Future<void> requestInitialPermissions() async {
+  if (_permissionsRequested) return; // prevents duplicate dialog
+  _permissionsRequested = true;
+
   await [
     Permission.location,
     Permission.camera,
@@ -56,25 +62,26 @@ Future<void> requestInitialPermissions() async {
     Permission.storage,
   ].request();
 }
-class ZenzioApp extends StatelessWidget {
-  const ZenzioApp({super.key});
+  class ZenzioApp extends StatelessWidget {
+    const ZenzioApp({super.key});
 
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Zenzio - Food Delivery & Booking',  
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFE53935),
-          primary: const Color(0xFFE53935),
+    return AppBackHandler(
+      child: MaterialApp(
+        title: 'Zenzio - Food Delivery & Booking',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFFE53935),
+            primary: const Color(0xFFE53935),
+          ),
+          fontFamily: 'Inter',
+          scaffoldBackgroundColor: Colors.white,
         ),
-        fontFamily: 'Inter',
-        scaffoldBackgroundColor: Colors.white,
-      ),
-      initialRoute: '/',
+        initialRoute: '/',
       routes: {
         // Auth Flow
         '/': (context) => const LoginScreen(),
@@ -148,6 +155,7 @@ class ZenzioApp extends StatelessWidget {
 
       //   return null;
       // },
+      )
     );
   }
 }

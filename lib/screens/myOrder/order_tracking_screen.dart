@@ -150,7 +150,9 @@ class OrderTrackingScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: OutlinedButton.icon(
-                onPressed: () {},
+                onPressed: () {
+                   Navigator.pushReplacementNamed(context, '/main-navigation');
+                },
                 icon: const Icon(Icons.help_outline, color: Color(0xFFE53935)),
                 label: const Text(
                   'Need Help?',

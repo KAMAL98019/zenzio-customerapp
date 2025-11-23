@@ -137,6 +137,8 @@
 
 // lib/services/restaurant_service.dart
 // 
+
+
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -176,62 +178,72 @@ class RestaurantService {
   }
 
   // ✅ Fetch single restaurant details by ID
-  Future<Restaurant> fetchRestaurantById(String id) async {
-    final token = await _storage.read(key: 'auth_token');
+Future<Restaurant> fetchRestaurantById(String restaurantUid) async {
+  try {
+    print("🔍 Fetching restaurant details for: $restaurantUid");
+    
+    final response = await _apiService.get(
+      '/restaurants/$restaurantUid',
+      requiresAuth: true,
+    );
 
-    if (token == null || token.isEmpty) {
-      throw Exception('No token found. Please log in again.');
+    print("✅ Restaurant API Response: $response");
+
+    final restaurantData = response["data"]?["restaurant"];
+    
+    if (restaurantData == null) {
+      throw Exception("No restaurant data found");
     }
 
-    print('🔐 Using token for fetchRestaurantById: $token');
+    // Extract profile
+    final profile = restaurantData['profile'] ?? {};
+    final List photos = profile['photo'] ?? [];
+    final String imageUrl = photos.isNotEmpty ? photos.first : "";
 
-final url = Uri.parse('${ApiConfig.baseUrl}/api/restaurants/$id');
-    final response = await http.get(url, headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    });
+    // Extract address
+    final address = restaurantData['address'] ?? {};
+    final String fullAddress = [
+      address['address'],
+      address['city'],
+      address['state'],
+      address['pincode']
+    ].where((e) => e != null && e.toString().isNotEmpty).join(', ');
 
-    print('📥 fetchRestaurantById: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
-      return Restaurant.fromJson(jsonData['data']);
-    } else if (response.statusCode == 401) {
-      throw Exception('Unauthorized (401) — Invalid or expired token.');
-    } else {
-      throw Exception('Failed to load restaurant: ${response.body}');
-    }
+    return Restaurant(
+      id: restaurantData['uid'] ?? restaurantUid,
+      restName: profile['restaurant_name'] ?? 'Unknown',
+      restAddress: fullAddress,
+      restLogo: imageUrl,
+      avgCostTwo: profile['avg_cost_for_two']?.toString() ?? '0',
+    );
+  } catch (e) {
+    print("❌ Failed to fetch restaurant: $e");
+    throw Exception("Failed to fetch restaurant: $e");
   }
+}
 
   // ✅ Fetch all foods of a restaurant (using token)
-  Future<List<Food>> fetchRestaurantFoods(String restaurantId) async {
-    final token = await _storage.read(key: 'auth_token');
+ Future<List<Food>> fetchRestaurantFoods(String restaurantUid) async {
+  try {
+    final response = await ApiService().get(
+      ApiConfig.getRestaurantMenu(restaurantUid),
+      requiresAuth: true,
+    );
 
-    if (token == null || token.isEmpty) {
-      throw Exception('No token found. Please log in again.');
-    }
+    print("🍽 API Menu Response: $response");
 
-    final url = Uri.parse('${ApiConfig.baseUrl}/restaurants/$restaurantId/foods');
-    print('🌐 Fetching foods from: $url');
-    print('🔐 Using token: $token');
+    // Correct extraction
+    final jsonData = response["data"];
+    final List<dynamic> menuList = jsonData["restaurant_menus"] ?? [];
 
-    final response = await http.get(url, headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    });
+    return menuList.map((item) => Food.fromJson(item)).toList();
 
-    print('📥 fetchRestaurantFoods: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final jsonData = jsonDecode(response.body);
-      final List<dynamic> data = jsonData['data'] ?? [];
-      return data.map((item) => Food.fromJson(item)).toList();
-    } else if (response.statusCode == 401) {
-      throw Exception('Unauthorized (401) — Invalid or expired token.');
-    } else {
-      throw Exception('Failed to load foods: ${response.body}');
-    }
+  } catch (e) {
+    print("❌ Failed to fetch foods: $e");
+    throw Exception("Failed to fetch foods: $e");
   }
+}
+
 
   // ✅ Category utilities
   String getCategoryName(String? categoryId) =>

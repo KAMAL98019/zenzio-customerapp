@@ -323,6 +323,29 @@ class AuthService {
       // Don't throw - verification email is not critical for login
     }
   }
+// ==================== SEND EMAIL VERIFICATION ====================
+// Future<void> sendEmailVerification(String email) async {
+//   try {
+//     final response = await _apiService.post(
+//       ApiConfig.firebaseSendVerificationEndpoint,
+//       body: {
+//         "email": email,
+//         "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action"
+//       },
+//       requiresAuth: false, // ❗ FIXED (should NOT require auth)
+//     );
+
+//     print('📩 Verification response: $response');
+
+//     if (response['status'] == 200 || response['status'] == 201 || response['success'] == true) {
+//       print('📩 Verification email sent successfully');
+//     } else {
+//       print('⚠️ Failed to send verification: ${response['message']}');
+//     }
+//   } catch (e) {
+//     print('❌ Error sending verification email: $e');
+//   }
+// }
 
   // ==================== LOGIN ====================
   Future<LoginResponse> loginWithEmail({

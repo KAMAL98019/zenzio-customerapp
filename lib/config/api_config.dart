@@ -24,7 +24,7 @@ class ApiConfig {
   // ==================== Home ENDPOINTS ====================
   static const String nearestRestaurantsEndpoint = "/restaurants/nearest";
   // static const String restaurantsEndpoint = '/restaurants';
-
+  static const String getRestaurantById = "/restaurants/";
   // ==================== Menu ENDPOINTS ====================
   static const String foodItemsEndpoint = '/restaurant-menu/nearest';
 
@@ -38,8 +38,11 @@ class ApiConfig {
   static const String removeCartItemEndpoint = '/cart/item';
   static const String clearRestCartEndpoint ='/cart/group'; // Clear all items from a specific restaurant group
   static const String clearCartEndpoint ='/cart/clear'; // Clear the complete cart
+   static String getCartGroup(String restaurantUid) =>
+      "/cart/group/$restaurantUid";
    static const String cartTransaction = "/cart-transactions";
   static const String createOrder = "/cart-transactions";
+
 
   // ==================== PAYMENT ENDPOINTS ====================
   static const String createRazorpayOrderEndpoint = "/payments/create-order";
@@ -51,8 +54,13 @@ class ApiConfig {
   static const String customerAppRating = "/rating/cus-app";
 
 
-  static const Duration connectTimeout = Duration(seconds: 30);
-  static const Duration receiveTimeout = Duration(seconds: 30);
+
+static String getRestaurantMenu(String restaurantUid) {
+    return "/restaurant-menu/by-restaurant?restaurant_uid=$restaurantUid";
+  }
+
+  static const Duration connectTimeout = Duration(seconds: 5);
+  static const Duration receiveTimeout = Duration(seconds: 5);
 
 
 

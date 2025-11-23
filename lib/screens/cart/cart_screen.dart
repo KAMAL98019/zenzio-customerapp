@@ -1,6 +1,120 @@
-import 'package:flutter/material.dart';
+// import 'package:flutter/material.dart';
+// import 'package:zenzio_customer/screens/home/restaurant_detail_screen.dart';
+// import 'package:zenzio_customer/screens/cart/checkout_screen.dart';
+// import 'package:zenzio_customer/services/restaurant_service.dart';
+// import 'package:zenzio_customer/services/token_service.dart';
+// import 'package:zenzio_customer/services/cart_service.dart';
+
+// class CartScreen extends StatefulWidget {
+//   const CartScreen({super.key});
+
+//   @override
+//   State<CartScreen> createState() => _CartScreenState();
+// }
+
+// class _CartScreenState extends State<CartScreen> {
+//   final TextEditingController _couponController = TextEditingController();
+//   final CartService _cartService = CartService();
+// // final cartDetails = await _cartService.getCartDetailsWithRestaurant(_restaurantId!);
+
+//   bool _isLoading = true;
+//   String? _errorMessage;
+//   List<CartItem> _cartItems = [];
+//   String _restaurantName = "Loading...";
+//   String? _restaurantId;
+//   String? _cartGroupUid; // ✅ Added to store cart_group_uid
+//   double _deliveryFee = 0;
+//   double _taxes = 0;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//   }
+
+//   @override
+//   void didChangeDependencies() {
+//     super.didChangeDependencies();
+
+//     final args = ModalRoute.of(context)?.settings.arguments;
+//     if (args != null && args is String) {
+//       _restaurantId = args;
+//       print("📌 Received Restaurant ID => $_restaurantId");
+//     }
+
+//     _fetchCartData();
+//   }
+
+  // Future<void> _fetchCartData() async {
+  //   if (!mounted) return;
+
+  //   setState(() {
+  //     _isLoading = true;
+  //     _errorMessage = null;
+  //   });
+
+  //   String? errorMessage;
+  //   try {
+  //     final tokenService = TokenService();
+  //     final userId = await tokenService.getUserId();
+  //     if (userId == null) throw Exception("User ID not found");
+
+  //     if (_restaurantId != null) {
+  //       // ✅ Use getCartDetails instead of fetchRestaurantItems to get cart_group_uid
+  //       final cartDetails = await _cartService.getCartDetails(_restaurantId!);
+  //       final items = cartDetails["items"] ?? [];
+        
+  //       // ✅ Extract cart_group_uid
+  //       _cartGroupUid = cartDetails["cart_group_uid"];
+  //       print("✅ Cart Group UID: $_cartGroupUid");
+
+  //       print("🔹 Fetched ${items.length} items from API");
+
+  //       _cartItems = items.map<CartItem>((item) {
+  //         print("🔹 Raw item data => $item");
+
+  //         // ✅ CRITICAL: Use database ID for API calls
+  //         int dbId = item['id'] ?? 0;
+  //         String cartItemUid = item['cart_item_uid'] ?? '';
+          
+  //         double unitPrice = double.tryParse(item['price']?.toString() ?? "0") ?? 0;
+  //         int quantity = item['qty'] ?? 1;
+          
+  //         const String dummyImage = "https://via.placeholder.com/150";
+
+  //         print("✅ Mapped: dbId=$dbId, uid=$cartItemUid, qty=$quantity");
+
+  //         return CartItem(
+  //           id: dbId,             // ✅ Database ID for API calls
+  //           uid: cartItemUid,     // UID for reference
+  //           name: item['menu_name'] ?? "Unknown Dish",
+  //           price: unitPrice.toInt(),
+  //           quantity: quantity,
+  //           image: dummyImage,
+  //         );
+  //       }).toList();
+
+  //       print("✅ Total cart items mapped: ${_cartItems.length}");
+  //     }
+
+  //     _restaurantName = _restaurantId ?? "Unknown Restaurant";
+  //     _deliveryFee = 50;
+  //     _taxes = _cartItems.isNotEmpty ? (_itemTotal * 0.05) : 0;
+  //   } catch (e) {
+  //     errorMessage = "⚠️ Error loading cart: $e";
+  //     print(errorMessage);
+  //   } finally {
+  //     if (!mounted) return;
+  //     setState(() {
+  //       _isLoading = false;
+  //       _errorMessage = errorMessage;
+  //     });
+  //   }
+  // }
+  
+  import 'package:flutter/material.dart';
 import 'package:zenzio_customer/screens/home/restaurant_detail_screen.dart';
 import 'package:zenzio_customer/screens/cart/checkout_screen.dart';
+import 'package:zenzio_customer/services/restaurant_service.dart';
 import 'package:zenzio_customer/services/token_service.dart';
 import 'package:zenzio_customer/services/cart_service.dart';
 
@@ -14,6 +128,7 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   final TextEditingController _couponController = TextEditingController();
   final CartService _cartService = CartService();
+// final cartDetails = await _cartService.getCartDetailsWithRestaurant(_restaurantId!);
 
   bool _isLoading = true;
   String? _errorMessage;
@@ -43,71 +158,91 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _fetchCartData() async {
-    if (!mounted) return;
+  if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
 
-    String? errorMessage;
-    try {
-      final tokenService = TokenService();
-      final userId = await tokenService.getUserId();
-      if (userId == null) throw Exception("User ID not found");
+  String? errorMessage;
+  try {
+    final tokenService = TokenService();
+    final userId = await tokenService.getUserId();
+    if (userId == null) throw Exception("User ID not found");
 
-      if (_restaurantId != null) {
-        // ✅ Use getCartDetails instead of fetchRestaurantItems to get cart_group_uid
-        final cartDetails = await _cartService.getCartDetails(_restaurantId!);
-        final items = cartDetails["items"] ?? [];
-        
-        // ✅ Extract cart_group_uid
-        _cartGroupUid = cartDetails["cart_group_uid"];
-        print("✅ Cart Group UID: $_cartGroupUid");
+    if (_restaurantId != null) {
+      // ✅ Get cart details which should include restaurant info
+      final cartDetails = await _cartService.getCartDetails(_restaurantId!);
+      final items = cartDetails["items"] ?? [];
+      
+      // ✅ Extract cart_group_uid
+      _cartGroupUid = cartDetails["cart_group_uid"];
+      print("✅ Cart Group UID: $_cartGroupUid");
 
-        print("🔹 Fetched ${items.length} items from API");
-
-        _cartItems = items.map<CartItem>((item) {
-          print("🔹 Raw item data => $item");
-
-          // ✅ CRITICAL: Use database ID for API calls
-          int dbId = item['id'] ?? 0;
-          String cartItemUid = item['cart_item_uid'] ?? '';
-          
-          double unitPrice = double.tryParse(item['price']?.toString() ?? "0") ?? 0;
-          int quantity = item['qty'] ?? 1;
-          
-          const String dummyImage = "https://via.placeholder.com/150";
-
-          print("✅ Mapped: dbId=$dbId, uid=$cartItemUid, qty=$quantity");
-
-          return CartItem(
-            id: dbId,             // ✅ Database ID for API calls
-            uid: cartItemUid,     // UID for reference
-            name: item['menu_name'] ?? "Unknown Dish",
-            price: unitPrice.toInt(),
-            quantity: quantity,
-            image: dummyImage,
-          );
-        }).toList();
-
-        print("✅ Total cart items mapped: ${_cartItems.length}");
+      // ✅ Extract restaurant details from cart response
+      final restaurantData = cartDetails["restaurant"];
+      if (restaurantData != null) {
+        _restaurantName = restaurantData["restaurant_name"] ?? 
+                         restaurantData["rest_name"] ?? 
+                         "Unknown Restaurant";
+        print("✅ Restaurant Name: $_restaurantName");
+      } else {
+        // ✅ Fallback: Fetch restaurant details separately if not in cart response
+        print("⚠️ Restaurant details not in cart response, fetching separately...");
+        try {
+          final restaurantService = RestaurantService();
+          final restaurant = await restaurantService.fetchRestaurantById(_restaurantId!);
+          _restaurantName = restaurant.restName;
+          print("✅ Fetched Restaurant Name: $_restaurantName");
+        } catch (e) {
+          print("❌ Failed to fetch restaurant details: $e");
+          _restaurantName = "Restaurant";
+        }
       }
 
-      _restaurantName = _restaurantId ?? "Unknown Restaurant";
-      _deliveryFee = 50;
-      _taxes = _cartItems.isNotEmpty ? (_itemTotal * 0.05) : 0;
-    } catch (e) {
-      errorMessage = "⚠️ Error loading cart: $e";
-      print(errorMessage);
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = errorMessage;
-      });
+      print("🔹 Fetched ${items.length} items from API");
+
+      _cartItems = items.map<CartItem>((item) {
+        print("🔹 Raw item data => $item");
+
+        // ✅ CRITICAL: Use database ID for API calls
+        int dbId = item['id'] ?? 0;
+        String cartItemUid = item['cart_item_uid'] ?? '';
+        
+        double unitPrice = double.tryParse(item['price']?.toString() ?? "0") ?? 0;
+        int quantity = item['qty'] ?? 1;
+        
+        const String dummyImage = "https://via.placeholder.com/150";
+
+        print("✅ Mapped: dbId=$dbId, uid=$cartItemUid, qty=$quantity");
+
+        return CartItem(
+          id: dbId,             // ✅ Database ID for API calls
+          uid: cartItemUid,     // UID for reference
+          name: item['menu_name'] ?? "Unknown Dish",
+          price: unitPrice.toInt(),
+          quantity: quantity,
+          image: dummyImage,
+        );
+      }).toList();
+
+      print("✅ Total cart items mapped: ${_cartItems.length}");
     }
+
+    _deliveryFee = 50;
+    _taxes = _cartItems.isNotEmpty ? (_itemTotal * 0.05) : 0;
+  } catch (e) {
+    errorMessage = "⚠️ Error loading cart: $e";
+    print(errorMessage);
+  } finally {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _errorMessage = errorMessage;
+    });
   }
+}
 
   Future<void> _updateQuantity(int itemId, int quantity) async {
     print('📤 Updating item => ID: $itemId, Quantity: $quantity');
@@ -289,40 +424,41 @@ class _CartScreenState extends State<CartScreen> {
                       else
                         ..._cartItems.map((item) => _buildCartItem(item)),
                       const SizedBox(height: 12),
-                      TextButton.icon(
-                        onPressed: () async {
-                          if (_restaurantId == null ||
-                              _restaurantId!.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Restaurant details not available.',
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => RestaurantDetailScreen(
-                                restaurantId: _restaurantId!,
-                              ),
-                            ),
-                          );
+                     // In your CartScreen, update the "Add more items" button:
 
-                          await _fetchCartData();
-                        },
-                        icon: const Icon(Icons.add, color: Color(0xFFE53935)),
-                        label: const Text(
-                          'Add more items',
-                          style: TextStyle(
-                            color: Color(0xFFE53935),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+TextButton.icon(
+  onPressed: () async {
+    if (_restaurantId == null || _restaurantId!.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Restaurant details not available.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
+    // ✅ Navigate with only restaurant ID
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RestaurantDetailScreen(
+          restaurantId: _restaurantId!, // Pass only ID
+        ),
+      ),
+    );
+
+    await _fetchCartData();
+  },
+  icon: const Icon(Icons.add, color: Color(0xFFE53935)),
+  label: const Text(
+    'Add more items',
+    style: TextStyle(
+      color: Color(0xFFE53935),
+      fontWeight: FontWeight.w500,
+    ),
+  ),
+),
                     ],
                   ),
                 ),

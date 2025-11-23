@@ -1,4 +1,5 @@
 import 'package:zenzio_customer/services/api_service.dart';
+import 'package:zenzio_customer/services/restaurant_service.dart';
 import '../data/models/cart_model.dart';
 import '../config/api_config.dart';
 
@@ -139,7 +140,18 @@ Future<void> updateItemQuantity(String itemId, int quantity) async {
 
     print("🗑 Clear Cart => $response");
   }
+// ============================
+  // ✅ NEW: GET CART GROUP BY RESTAURANT UID
+  // URL → /cart/group/:restaurantUid
+  // ============================
+  Future<Map<String, dynamic>> getCartGroup(String restaurantUid) async {
+    final endpoint = ApiConfig.getCartGroup(restaurantUid);
+    final response = await _api.get(endpoint, requiresAuth: true);
 
+    print("🍽 Cart Group => $response");
+
+    return response["data"] ?? {};
+  }
   // ============================
   // 6. CLEAR SPECIFIC RESTAURANT CART GROUP
   // URL → /cart/group/:restId
@@ -154,6 +166,30 @@ Future<void> updateItemQuantity(String itemId, int quantity) async {
   }
 
 
+// In cart_service.dart
+// Future<Map<String, dynamic>> getCartDetailsWithRestaurant(String restaurantId) async {
+//   try {
+//     // Get cart details
+//     final cartDetails = await getCartDetails(restaurantId);
+    
+//     // Fetch restaurant info separately
+//     final restaurantService = RestaurantService();
+//     final restaurant = await restaurantService.fetchRestaurantById(restaurantId);
+    
+//     // Combine both
+//     cartDetails['restaurant'] = {
+//       'restaurant_name': restaurant.restName,
+//       'restaurant_uid': restaurant.id,
+//       'rest_address': restaurant.restAddress,
+//       'rest_logo': restaurant.restLogo,
+//     };
+    
+//     return cartDetails;
+//   } catch (e) {
+//     print('❌ Error getting cart with restaurant: $e');
+//     rethrow;
+//   }
+// }
 
 }
 

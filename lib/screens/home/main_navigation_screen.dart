@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:zenzio_customer/widgets/app_back_handler.dart';
 import 'home_screen.dart';
 import '../menu/menu_screen.dart';
 import '../booking/bookings_home_screen.dart';
@@ -26,7 +27,8 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppBackHandler(
+    child: Scaffold(
       body: _screens[_selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -96,6 +98,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
               child: const Icon(Icons.shopping_cart),
             )
           : null,
+    )
     );
   }
 }
