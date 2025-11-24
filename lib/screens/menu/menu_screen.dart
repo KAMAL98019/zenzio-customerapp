@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:zenzio_customer/data/models/food_model.dart';
-import 'package:zenzio_customer/services/api_service.dart';
-import 'package:zenzio_customer/services/auth_service.dart';
-import 'package:zenzio_customer/services/location_service.dart';
+import 'package:zenzio/data/models/food_model.dart';
+import 'package:zenzio/services/api_service.dart';
+import 'package:zenzio/services/auth_service.dart';
+import 'package:zenzio/services/location_service.dart';
 import '../../data/models/food_item.dart';
 import '../../data/models/cart_model.dart';
 import '../../services/cart_service.dart';

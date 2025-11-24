@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:zenzio_customer/screens/auth/VerifyEmailScreen.dart';
+import 'package:zenzio/screens/auth/VerifyEmailScreen.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 

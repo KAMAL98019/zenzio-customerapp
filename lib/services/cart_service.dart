@@ -1,5 +1,5 @@
-import 'package:zenzio_customer/services/api_service.dart';
-import 'package:zenzio_customer/services/restaurant_service.dart';
+import 'package:zenzio/services/api_service.dart';
+import 'package:zenzio/services/restaurant_service.dart';
 import '../data/models/cart_model.dart';
 import '../config/api_config.dart';
 

@@ -1,4 +1,4 @@
-name: zenzio_customer
+name: zenzio
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -37,6 +37,7 @@ dependencies:
   razorpay_flutter: ^1.3.7
   flutter_secure_storage: ^9.0.0
   pin_code_fields: ^8.0.1
+  google_maps_flutter: ^2.5.0
   geolocator: ^14.0.2
   shared_preferences: ^2.3.2
   provider: ^6.1.2
@@ -57,7 +58,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
-
+  flutter_launcher_icons: ^0.13.1
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -101,3 +102,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/final_customer.png"

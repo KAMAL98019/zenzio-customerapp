@@ -112,11 +112,11 @@
   // }
   
   import 'package:flutter/material.dart';
-import 'package:zenzio_customer/screens/home/restaurant_detail_screen.dart';
-import 'package:zenzio_customer/screens/cart/checkout_screen.dart';
-import 'package:zenzio_customer/services/restaurant_service.dart';
-import 'package:zenzio_customer/services/token_service.dart';
-import 'package:zenzio_customer/services/cart_service.dart';
+import 'package:zenzio/screens/home/restaurant_detail_screen.dart';
+import 'package:zenzio/screens/cart/checkout_screen.dart';
+import 'package:zenzio/services/restaurant_service.dart';
+import 'package:zenzio/services/token_service.dart';
+import 'package:zenzio/services/cart_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});

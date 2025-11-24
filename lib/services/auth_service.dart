@@ -640,38 +640,52 @@ class AuthService {
   }
 
   // ==================== GET USER PROFILE ====================
-  Future<User> getUserProfile() async {
+  // Future<User> getUserProfile() async {
+  //   try {
+  //     final token = await storage.read(key: 'auth_token');
+  //     final userId = await storage.read(key: 'user_id');
+
+  //     if (token == null || userId == null) {
+  //       throw Exception('Missing authentication credentials');
+  //     }
+
+  //     final response = await _apiService.get(
+  // ApiConfig.userProfileEndpoint,
+
+  //       requiresAuth: true,
+  //     );
+
+  //     final userJson = _extractUserData(response);
+  //     _currentUser = User.fromJson(userJson);
+
+  //     await storage.write(
+  //       key: 'user_data',
+  //       value: jsonEncode(_currentUser!.toJson()),
+  //     );
+
+  //     print('✅ User profile fetched');
+  //     return _currentUser!;
+  //   } catch (e) {
+  //     print('❌ Error fetching user profile: $e');
+  //     rethrow;
+  //   }
+  // }
+
+ Future<User> getUserProfile() async {
     try {
-      final token = await storage.read(key: 'auth_token');
-      final userId = await storage.read(key: 'user_id');
-
-      if (token == null || userId == null) {
-        throw Exception('Missing authentication credentials');
-      }
-
       final response = await _apiService.get(
-// '${ApiConfig.userProfileEndpoint}/$userId',
-  ApiConfig.userProfileEndpoint,
-
-        requiresAuth: true,
+        ApiConfig.userProfileEndpoint, // '/users/me'
+        requiresAuth: true,            // token is automatically included in headers
       );
 
-      final userJson = _extractUserData(response);
-      _currentUser = User.fromJson(userJson);
+      final userJson = response["data"] ?? response;
 
-      await storage.write(
-        key: 'user_data',
-        value: jsonEncode(_currentUser!.toJson()),
-      );
-
-      print('✅ User profile fetched');
-      return _currentUser!;
+      return User.fromJson(userJson);
     } catch (e) {
       print('❌ Error fetching user profile: $e');
       rethrow;
     }
   }
-
   // ==================== UPDATE PROFILE ====================
   Future<void> updateProfileWithImage({
     required String name,

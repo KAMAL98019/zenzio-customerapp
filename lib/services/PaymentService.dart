@@ -73,7 +73,7 @@
 //   }
 // }
 
-import 'package:zenzio_customer/services/api_service.dart';
+import 'package:zenzio/services/api_service.dart';
 import '../config/api_config.dart';
 
 class PaymentService {
@@ -139,14 +139,18 @@ class PaymentService {
   // VERIFY PAYMENT
   // ============================
   Future<Map<String, dynamic>> verifyPayment({
-    required String orderId,
-    required String paymentId,
-    required String signature,
+    // required String orderId,
+    // required String paymentId,
+    // required String signature,
+     required String paymentId,
+  required int amountInPaise,
   }) async {
     final body = {
-      "razorpay_order_id": orderId,
-      "razorpay_payment_id": paymentId,
-      "razorpay_signature": signature,
+      // "razorpay_order_id": orderId,
+      // "razorpay_payment_id": paymentId,
+      // "razorpay_signature": signature  ,
+      "razorpay_paymentId": paymentId,
+      "razorpay_amountInPaise": amountInPaise,
     };
 
     print("✅ Verifying Payment => $body");

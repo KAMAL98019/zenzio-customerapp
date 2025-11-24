@@ -1,7 +1,7 @@
 
 import 'package:flutter/material.dart';
-import 'package:zenzio_customer/data/models/restaurant2_model.dart';
-import 'package:zenzio_customer/services/restaurant2_service.dart';
+import 'package:zenzio/data/models/restaurant2_model.dart';
+import 'package:zenzio/services/restaurant2_service.dart';
 
 class RestaurantListScreen extends StatefulWidget {
   const RestaurantListScreen({Key? key}) : super(key: key);

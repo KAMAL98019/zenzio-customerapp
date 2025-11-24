@@ -1,4 +1,4 @@
-import 'package:zenzio_customer/services/api_service.dart';
+import 'package:zenzio/services/api_service.dart';
 import '../config/api_config.dart';
 
 class CartTransactionService {

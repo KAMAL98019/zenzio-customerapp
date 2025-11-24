@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:zenzio_customer/services/auth_service.dart';
+import 'package:zenzio/services/auth_service.dart';
 import 'dart:async';
 
 class ForgotPasswordOTPScreen extends StatefulWidget {

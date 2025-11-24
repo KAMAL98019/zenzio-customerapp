@@ -1,5 +1,5 @@
 
-import 'package:zenzio_customer/data/models/restaurant2_model.dart';
+import 'package:zenzio/data/models/restaurant2_model.dart';
 
 class RestaurantService {
   static List<RestaurantModel> getTopOffers() {

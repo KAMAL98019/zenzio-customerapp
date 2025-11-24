@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:zenzio_customer/services/api_service.dart';
+import 'package:zenzio/services/api_service.dart';
 import 'dart:async';
 
 import '../../services/auth_service.dart';

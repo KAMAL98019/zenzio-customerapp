@@ -15,7 +15,7 @@ class ApiConfig {
   static const String signupEndpoint = "/users/auth/signup/email";
   static const String loginEndpoint = "/users/auth/login/email";
   static const String firebaseSendVerificationEndpoint ="/firebase/send-verification";
-  static const String userProfileEndpoint = '/users/me';
+    static const String userProfileEndpoint = '/users/me';
   static const String otpSendEndpoint = '/otp/send';
   static const String otpVerifyEndpoint = '/otp/verify';
   static const String refreshAuth = "/users/refresh-auth";
@@ -47,12 +47,15 @@ class ApiConfig {
   // ==================== PAYMENT ENDPOINTS ====================
   static const String createRazorpayOrderEndpoint = "/payments/create-order";
   static const String verifyPaymentEndpoint = "/payments/verify";
+  // static const String verifyPaymentEndpoint = "/payments/auto-capture";
 
   // ==================== RATINGS ENDPOINTS ====================
   static const String customerRestaurantRating = "/rating/cust-restaurant";
   static const String customerFleetRating = "/rating/fleet-cust";
   static const String customerAppRating = "/rating/cus-app";
 
+// -------- DELIVERY LOCATION ENDPOINT --------
+  static const String deliveryLocation = "/delivery-location";
 
 
 static String getRestaurantMenu(String restaurantUid) {

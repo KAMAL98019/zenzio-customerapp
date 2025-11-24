@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:zenzio_customer/services/api_service.dart';
-import 'package:zenzio_customer/services/token_service.dart';
-import 'package:zenzio_customer/services/cart_service.dart';
-import 'package:zenzio_customer/config/api_config.dart';
+import 'package:zenzio/services/api_service.dart';
+import 'package:zenzio/services/token_service.dart';
+import 'package:zenzio/services/cart_service.dart';
+import 'package:zenzio/config/api_config.dart';
 import 'dart:convert';
 
 class CartRestScreen extends StatefulWidget {

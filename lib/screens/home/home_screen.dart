@@ -765,8 +765,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:zenzio_customer/services/location_service.dart';
-import 'package:zenzio_customer/services/map_service.dart';
+import 'package:zenzio/services/location_service.dart';
+import 'package:zenzio/services/map_service.dart';
 import 'restaurant_detail_screen.dart';
 import '../../config/api_config.dart';
 

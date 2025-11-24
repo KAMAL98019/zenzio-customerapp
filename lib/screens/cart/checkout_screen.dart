@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'package:zenzio_customer/config/api_config.dart';
-import 'package:zenzio_customer/screens/cart/cart_screen.dart';
-import 'package:zenzio_customer/services/CartTransactionService.dart';
-import 'package:zenzio_customer/services/PaymentService.dart';
+import 'package:zenzio/config/api_config.dart';
+import 'package:zenzio/screens/cart/cart_screen.dart';
+import 'package:zenzio/services/CartTransactionService.dart';
+import 'package:zenzio/services/PaymentService.dart';
 
 
 class CheckoutScreen extends StatefulWidget {
@@ -60,9 +60,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       // Verify payment with backend
       await _paymentService.verifyPayment(
-        orderId: response.orderId ?? '',
-        paymentId: response.paymentId ?? '',
-        signature: response.signature ?? '',
+        // orderId: response.orderId ?? '',
+        // paymentId: response.paymentId ?? '',
+        // signature: response.signature ?? '',
+         paymentId: response.paymentId!,
+      amountInPaise: (widget.grandTotal * 100).toInt()
       );
 
       if (!mounted) return;

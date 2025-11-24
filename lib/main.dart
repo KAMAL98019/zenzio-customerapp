@@ -1,9 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:zenzio_customer/screens/auth/VerifyEmailScreen.dart';
-import 'package:zenzio_customer/screens/home/home1_screen.dart';
-import 'package:zenzio_customer/widgets/app_back_handler.dart';
+import 'package:zenzio/screens/auth/VerifyEmailScreen.dart';
+import 'package:zenzio/screens/home/home1_screen.dart';
+import 'package:zenzio/widgets/app_back_handler.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/otp_verify_screen.dart';
 import 'screens/auth/signup_screen.dart';
@@ -51,17 +51,31 @@ void main() async {
 }
 
 
-  Future<void> requestInitialPermissions() async {
+Future<void> requestInitialPermissions() async {
   if (_permissionsRequested) return; // prevents duplicate dialog
   _permissionsRequested = true;
 
-  await [
-    Permission.location,
-    Permission.camera,
-    Permission.photos,
-    Permission.storage,
-  ].request();
+  try {
+    // Request all permissions at once
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.location,
+      Permission.camera,
+      Permission.photos,
+      Permission.storage,
+    ].request();
+
+    // You can check individual statuses if needed
+    statuses.forEach((permission, status) {
+      print('$permission: $status');
+    });
+  } catch (e) {
+    print('Error requesting permissions: $e');
+  } finally {
+    _permissionsRequested = false; // reset so it can be requested again if needed
+  }
 }
+
+
   class ZenzioApp extends StatelessWidget {
     const ZenzioApp({super.key});
 
@@ -70,7 +84,7 @@ void main() async {
   Widget build(BuildContext context) {
     return AppBackHandler(
       child: MaterialApp(
-        title: 'Zenzio - Food Delivery & Booking',
+        title: 'Zenzio',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
@@ -133,7 +147,7 @@ void main() async {
         '/profile': (context) => const ProfileScreen(),
         '/edit-profile': (context) => const EditProfileScreen(),
         '/saved-addresses': (context) => const SavedAddressesScreen(),
-        '/add-address': (context) => const AddEditAddressScreen(),
+        '/add-address': (context) => const AddAddressScreen(),
         '/payment-methods': (context) => const PaymentMethodsScreen(),
         '/notifications': (context) => const NotificationsScreen(),
         '/help-support': (context) => const HelpSupportScreen(),
@@ -159,3 +173,5 @@ void main() async {
     );
   }
 }
+
+// C:\Users\Employee-PC\Desktop\zenzio\assets\images\final customer, restuarant, (2).png

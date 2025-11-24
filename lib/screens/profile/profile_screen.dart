@@ -568,7 +568,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zenzio_customer/services/auth_service.dart';
+import 'package:zenzio/services/auth_service.dart';
 import '../../data/models/user_model.dart'; // ✅ Adjust this import path if needed
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
@@ -620,30 +620,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 //   setState(() => _isLoading = false);
 // }
 
+UserDisplay? _displayUser;
 
- Future<void> _loadUser() async {
+Future<void> _loadUser() async {
   setState(() => _isLoading = true);
 
   try {
-    // ✅ Read securely stored user data
-    final userData = await storage.read(key: 'user_data');
-    final token = await storage.read(key: 'auth_token');
+    final authService = AuthService();
+    final fetchedUser = await authService.getUserProfile();
 
-    if (userData != null && token != null) {
-      final userMap = jsonDecode(userData);
-      setState(() {
-        _user = User.fromJson(userMap);
-      });
-      print('✅ User loaded from secure storage: ${_user?.name}');
-    } else {
-      print('⚠️ No user data or token found in secure storage');
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _user = fetchedUser;
+      // Map fetched user to display model
+      _displayUser = UserDisplay.fromUserJson(fetchedUser.toJson());
+    });
+
+    print('✅ User loaded: ${_displayUser?.name}');
   } catch (e) {
-    print('❌ Error loading user data: $e');
+    print('❌ Failed to load user: $e');
   }
 
+  if (!mounted) return;
   setState(() => _isLoading = false);
 }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -715,24 +718,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
 
             // User info
-            Text(
-              _user!.name ?? 'Unknown User',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF2D2D2D),
-              ),
-            ),
+           Text(
+  _displayUser?.name ?? 'Unknown User',
+  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+),
+Text(
+  _displayUser?.email ?? '',
+  style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
+),
+Text(
+  _displayUser?.mobile ?? '',
+  style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
+),
+
             const SizedBox(height: 4),
-            Text(
-              _user!.email ?? '',
-              style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _user!.mobile ?? '',
-              style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
-            ),
+            // Text(
+            //   _user!.mobile ?? '',
+            //   style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
+            // ),
 
             const SizedBox(height: 16),
 
@@ -918,6 +921,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class UserDisplay {
+  final String name;
+  final String email;
+  final String mobile;
+
+  UserDisplay({
+    required this.name,
+    required this.email,
+    required this.mobile,
+  });
+
+  factory UserDisplay.fromUserJson(Map<String, dynamic> json) {
+    // Map backend fields for display
+    String name = json['name'] ?? 'Unknown User';
+    String email = json['contact']?['encryptedEmail'] ?? '';
+    String mobile = json['contact']?['encryptedPhone'] ?? '';
+
+    return UserDisplay(
+      name: name,
+      email: email,
+      mobile: mobile,
     );
   }
 }
