@@ -79,7 +79,6 @@ import '../config/api_config.dart';
 class PaymentService {
   final ApiService _api = ApiService();
 
-  // ============================
   // CREATE RAZORPAY ORDER
   // ============================
   Future<Map<String, dynamic>> createRazorpayOrder({
@@ -105,19 +104,20 @@ class PaymentService {
       print("💳 Razorpay Order Response => $response");
 
       // ✅ Handle different response formats
-      // Backend might return data directly or wrapped in 'data' object
       Map<String, dynamic> orderData;
-      
+
       if (response is Map<String, dynamic>) {
         // Check if response has 'data' wrapper
         if (response.containsKey("data")) {
           orderData = response["data"] as Map<String, dynamic>;
-        } 
+        }
         // Check if response has Razorpay order fields directly
         else if (response.containsKey("id") && response.containsKey("amount")) {
           orderData = response;
         } else {
-          throw Exception("Invalid response format from Razorpay order creation");
+          throw Exception(
+            "Invalid response format from Razorpay order creation",
+          );
         }
 
         // Ensure we have the required fields
@@ -135,15 +135,14 @@ class PaymentService {
     }
   }
 
-  // ============================
   // VERIFY PAYMENT
   // ============================
   Future<Map<String, dynamic>> verifyPayment({
     // required String orderId,
     // required String paymentId,
     // required String signature,
-     required String paymentId,
-  required int amountInPaise,
+    required String paymentId,
+    required int amountInPaise,
   }) async {
     final body = {
       // "razorpay_order_id": orderId,
@@ -170,4 +169,4 @@ class PaymentService {
       rethrow;
     }
   }
-} 
+}

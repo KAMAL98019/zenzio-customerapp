@@ -1024,7 +1024,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Error view with retry button
   Widget _buildErrorView() {
     return Center(
       child: Padding(

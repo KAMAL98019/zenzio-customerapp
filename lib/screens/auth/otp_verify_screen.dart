@@ -182,7 +182,6 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // UI preserved exactly as you provided
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(

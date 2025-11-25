@@ -33,11 +33,7 @@ class SocialLoginButtons extends StatelessWidget {
   }) {
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: Icon(
-        icon,
-        color: const Color(0xFF2D2D2D),
-        size: 24,
-      ),
+      icon: Icon(icon, color: const Color(0xFF2D2D2D), size: 24),
       label: Text(
         icon == Icons.g_mobiledata ? 'Google' : 'Apple',
         style: const TextStyle(
@@ -49,9 +45,7 @@ class SocialLoginButtons extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 14),
         side: const BorderSide(color: Color(0xFFE0E0E0)),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         backgroundColor: Colors.white,
       ),
     );

@@ -11,25 +11,17 @@ class AppBackHandler extends StatelessWidget {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: const Text(
           "Exit App",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
         ),
         content: const Text("Are you sure you want to exit?"),
         actions: [
           TextButton(
             child: const Text(
               "No",
-              style: TextStyle(
-                color: Colors.grey,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
             ),
             onPressed: () => Navigator.of(context).pop(false),
           ),
@@ -43,24 +35,23 @@ class AppBackHandler extends StatelessWidget {
             ),
             onPressed: () {
               Navigator.of(context).pop(true);
-              SystemNavigator.pop(); // ✅ Properly exit the app
+              SystemNavigator.pop();
             },
           ),
         ],
       ),
     );
-    
+
     return result ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Use PopScope for Flutter 3.16+, WillPopScope for older versions
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        
+
         final shouldPop = await _onBackPressed(context);
         if (shouldPop && context.mounted) {
           SystemNavigator.pop();

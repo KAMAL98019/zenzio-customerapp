@@ -15,7 +15,7 @@ import 'screens/home/home_screen.dart';
 import 'screens/menu/menu_screen.dart';
 import 'screens/home/restaurant_detail_screen.dart';
 import 'screens/cart/cart_screen.dart';
-import 'screens/cart/cart_rest_screen.dart'; 
+import 'screens/cart/cart_rest_screen.dart';
 import 'screens/myOrder/order_tracking_screen.dart';
 import 'screens/myOrder/my_orders_screen.dart';
 import 'screens/myOrder/order_details_screen.dart';
@@ -38,25 +38,21 @@ import 'services/auth_service.dart';
 
 bool _permissionsRequested = false;
 
-// ✅ Initialize auth service before app starts
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp();
-     requestInitialPermissions();
+  await Firebase.initializeApp();
+  requestInitialPermissions();
 
-  // Initialize auth service to load token
   await AuthService().initialize();
-  
+
   runApp(const ZenzioApp());
 }
 
-
 Future<void> requestInitialPermissions() async {
-  if (_permissionsRequested) return; // prevents duplicate dialog
+  if (_permissionsRequested) return;
   _permissionsRequested = true;
 
   try {
-    // Request all permissions at once
     Map<Permission, PermissionStatus> statuses = await [
       Permission.location,
       Permission.camera,
@@ -64,21 +60,18 @@ Future<void> requestInitialPermissions() async {
       Permission.storage,
     ].request();
 
-    // You can check individual statuses if needed
     statuses.forEach((permission, status) {
       print('$permission: $status');
     });
   } catch (e) {
     print('Error requesting permissions: $e');
   } finally {
-    _permissionsRequested = false; // reset so it can be requested again if needed
+    _permissionsRequested = false;
   }
 }
 
-
-  class ZenzioApp extends StatelessWidget {
-    const ZenzioApp({super.key});
-
+class ZenzioApp extends StatelessWidget {
+  const ZenzioApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -96,82 +89,68 @@ Future<void> requestInitialPermissions() async {
           scaffoldBackgroundColor: Colors.white,
         ),
         initialRoute: '/',
-      routes: {
-        // Auth Flow
-        '/': (context) => const LoginScreen(),
-        '/otp': (context) => const OTPVerifyScreen(),
-        '/signup': (context) => const SignupScreen(),
-        // '/register-otp-verify': (context) => const RegisterOTPVerifyScreen(),
-        '/forgot-password': (context) => const ForgotPasswordScreen(),
-        '/forgot-otp': (context) => const ForgotPasswordOTPScreen(),
-        '/reset-password': (context) => const ResetPasswordScreen(),
-        
-        // Main Navigation
-        '/main-navigation': (context) => const MainNavigationScreen(),
-        
-        // Food Ordering Flow
-        '/home1': (context) => const RestaurantListScreen(),
-        '/home': (context) => const HomeScreen(),
-        '/menu': (context) => const MenuScreen(),
-        '/restaurant-detail': (context) => const RestaurantDetailScreen(
-          restaurantId: '',
-        ),
-        
-        // ✅ NEW: Restaurant cart overview (shows list of restaurants)
-        '/cart-rest': (context) => const CartRestScreen(),
-        
-        // ✅ Cart detail (shows items from a restaurant)
-        '/cart': (context) => const CartScreen(),
-        
-        // '/checkout': (context) => const CheckoutScreen(),
-        // '/order-tracking': (context) => const OrderTrackingScreen(),
-        '/my-orders': (context) => const MyOrdersScreen(),
-        '/order-details': (context) => const OrderDetailsScreen(),
-        '/order-tracking':(context)=>const OrderTrackingScreen(orderId: null,),
-        // Booking Flow
-        '/bookings': (context) => const BookingsHomeScreen(),
-       '/booking-details': (context) {
-  final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+        routes: {
+          // Auth Flow
+          '/': (context) => const LoginScreen(),
+          '/otp': (context) => const OTPVerifyScreen(),
+          '/signup': (context) => const SignupScreen(),
+          // '/register-otp-verify': (context) => const RegisterOTPVerifyScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/forgot-otp': (context) => const ForgotPasswordOTPScreen(),
+          '/reset-password': (context) => const ResetPasswordScreen(),
 
-  return BookingDetailsScreen(
-    bookingId: args?['bookingId'] ?? '',
-    userId: args?['userId'] ?? '',
-  );
-},
+          // Main Navigation
+          '/main-navigation': (context) => const MainNavigationScreen(),
 
+          // Food Ordering Flow
+          '/home1': (context) => const RestaurantListScreen(),
+          '/home': (context) => const HomeScreen(),
+          '/menu': (context) => const MenuScreen(),
+          '/restaurant-detail': (context) =>
+              const RestaurantDetailScreen(restaurantId: ''),
 
-        '/booking-form': (context) => const BookingFormScreen(),
-        '/booking-confirmation': (context) => const BookingConfirmationScreen(),
-        
-        // Profile Flow
-        '/profile': (context) => const ProfileScreen(),
-        '/edit-profile': (context) => const EditProfileScreen(),
-        '/saved-addresses': (context) => const SavedAddressesScreen(),
-        '/add-address': (context) => const AddAddressScreen(),
-        '/payment-methods': (context) => const PaymentMethodsScreen(),
-        '/notifications': (context) => const NotificationsScreen(),
-        '/help-support': (context) => const HelpSupportScreen(),
-        '/settings': (context) => const SettingsScreen(),
-        '/chat-assistant': (context) => const ChatAssistantScreen(),
-        '/my-coupons': (context) => const MyCouponsScreen(),
-      },
-      
-      //      onGenerateRoute: (settings) {
-      //   if (settings.name == '/booking-details') {
-      //     // final args = settings.arguments as Map<String, dynamic>;
-      //     return MaterialPageRoute(
-      //       builder: (context) => BookingDetailsScreen(
-      //         bookingId: args['bookingId'],
-      //         userId: args['userId'],
-      //       ),
-      //     );
-      //   }
+          //  Restaurant cart overview (shows list of restaurants)
+          '/cart-rest': (context) => const CartRestScreen(),
 
-      //   return null;
-      // },
-      )
+          // Cart detail (shows items from a restaurant)
+          '/cart': (context) => const CartScreen(),
+
+          // '/checkout': (context) => const CheckoutScreen(),
+          // '/order-tracking': (context) => const OrderTrackingScreen(),
+          '/my-orders': (context) => const MyOrdersScreen(),
+          '/order-details': (context) => const OrderDetailsScreen(),
+          '/order-tracking': (context) =>
+              const OrderTrackingScreen(orderId: null),
+          // Booking Flow
+          '/bookings': (context) => const BookingsHomeScreen(),
+          '/booking-details': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>?;
+
+            return BookingDetailsScreen(
+              bookingId: args?['bookingId'] ?? '',
+              userId: args?['userId'] ?? '',
+            );
+          },
+
+          '/booking-form': (context) => const BookingFormScreen(),
+          '/booking-confirmation': (context) =>
+              const BookingConfirmationScreen(),
+
+          // Profile Flow
+          '/profile': (context) => const ProfileScreen(),
+          '/edit-profile': (context) => const EditProfileScreen(),
+          '/saved-addresses': (context) => const SavedAddressesScreen(),
+          '/add-address': (context) => const AddAddressScreen(),
+          '/payment-methods': (context) => const PaymentMethodsScreen(),
+          '/notifications': (context) => const NotificationsScreen(),
+          '/help-support': (context) => const HelpSupportScreen(),
+          '/settings': (context) => const SettingsScreen(),
+          '/chat-assistant': (context) => const ChatAssistantScreen(),
+          '/my-coupons': (context) => const MyCouponsScreen(),
+        },
+      ),
     );
   }
 }
-
-// C:\Users\Employee-PC\Desktop\zenzio\assets\images\final customer, restuarant, (2).png

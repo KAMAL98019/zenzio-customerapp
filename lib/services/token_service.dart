@@ -6,11 +6,11 @@ class TokenService {
   Future<String?> getToken() async {
     return await _storage.read(key: 'auth_token');
   }
-  
-Future<String?> getUserId() async {
-  final storage = FlutterSecureStorage();
-  return await storage.read(key: 'user_id');
-}
+
+  Future<String?> getUserId() async {
+    final storage = FlutterSecureStorage();
+    return await storage.read(key: 'user_id');
+  }
 
   Future<void> saveToken(String token) async {
     await _storage.write(key: 'auth_token', value: token);

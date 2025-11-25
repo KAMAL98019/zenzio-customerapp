@@ -54,7 +54,7 @@ class FoodItem {
   final String? imageUrl;
   final String? category;
   final String? cuisine;
-  final String? restaurantUid;   // <-- FIELD IS HERE
+  final String? restaurantUid;  
 
   FoodItem({
     required this.id,
@@ -75,7 +75,6 @@ class FoodItem {
       id: json['id'].toString(),
       name: json['menu_name'] ?? 'Unknown Dish',
 
-      // FIX → restaurantUid set from backend key
       restaurantUid: json['restaurant_uid'] ??
                      json['restaurantUid'] ??
                      json['rest_uid'] ??

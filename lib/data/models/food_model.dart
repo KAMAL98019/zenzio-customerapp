@@ -34,14 +34,14 @@
 //       id: json['id'] ?? '',
 //       restId: json['rest_id'] ?? '',
 //       restaurantUid: json['restaurantUid'] ?? '',
-//       foodName: json['dishname'] ?? '', // ✅ matches backend key
+//       foodName: json['dishname'] ?? '', 
 //       price: (json['price'] ?? 0).toDouble(),
 //       veg: json['veg'] ?? false,
 //       containAllergens: json['contain_allergens'] ?? false,
 //       specifyAllergence: json['specify_allergence'] ?? '',
 //       customisedOptions: json['customised_options']?.toString(),
 //       description: json['description'] ?? '',
-//       image: json['dishimage'] ?? '', // ✅ matches backend key
+//       image: json['dishimage'] ?? '', 
 //       cuisineId: json['cuisineId'] ?? '',
 //       categoryId: json['categoryId'] ?? '',
 //     );

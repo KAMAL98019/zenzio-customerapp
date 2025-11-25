@@ -24,47 +24,47 @@ class MapService {
     const maxRetries = 1;
 
     try {
-      // Validate token exists
       String? token = await storage.read(key: 'auth_token');
 
       if (token == null || token.isEmpty) {
         print('❌ No token found in secure storage');
-        
-        // Try to check if user is logged in via AuthService
+
         if (!_authService.isLoggedIn) {
           throw Exception("Please log in to view nearby restaurants");
         }
-        
-        // Try to get token again after small delay
+
         await Future.delayed(const Duration(milliseconds: 100));
         token = await storage.read(key: 'auth_token');
-        
+
         if (token == null || token.isEmpty) {
-          throw Exception("Authentication token not found. Please login again.");
+          throw Exception(
+            "Authentication token not found. Please login again.",
+          );
         }
       }
 
-      // Build URL with /api prefix
       final url = Uri.parse(
-        "${ApiConfig.baseUrl}${ApiConfig.nearestRestaurantsEndpoint}?lat=$lat&lng=$lng"
+        "${ApiConfig.baseUrl}${ApiConfig.nearestRestaurantsEndpoint}?lat=$lat&lng=$lng",
       );
 
       print("🌐 Fetching nearby restaurants: $url");
       print("🔐 Using token: ${token.substring(0, 20)}...");
 
-      final response = await http.get(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": "Bearer $token",
-          "ngrok-skip-browser-warning": "true",
-          "platform": getPlatform(),
-          "User-Agent": getPlatform(),
-          "mode": "development",
-          "clientId": ApiConfig.clientId,
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            url,
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Authorization": "Bearer $token",
+              "ngrok-skip-browser-warning": "true",
+              "platform": getPlatform(),
+              "User-Agent": getPlatform(),
+              "mode": "development",
+              "clientId": ApiConfig.clientId,
+            },
+          )
+          .timeout(const Duration(seconds: 15));
 
       print("📥 Response Status: ${response.statusCode}");
 
@@ -86,22 +86,20 @@ class MapService {
             "Session expired and could not be refreshed. Please login again.",
           );
         }
-
-        // Wait for token to be written to storage
         await Future.delayed(const Duration(milliseconds: 200));
 
-        // Retry the request once
         print("🔄 Retrying request with new token...");
         return await getNearbyRestaurants(lat, lng, retryCount: retryCount + 1);
       }
 
       // Other error codes
-      final errorBody = response.body.isNotEmpty 
-          ? jsonDecode(response.body) 
+      final errorBody = response.body.isNotEmpty
+          ? jsonDecode(response.body)
           : {'message': 'Unknown error'};
-      
+
       throw Exception(
-        errorBody['message'] ?? "Failed to fetch restaurants: ${response.statusCode}",
+        errorBody['message'] ??
+            "Failed to fetch restaurants: ${response.statusCode}",
       );
     } on SocketException {
       print("❌ Network error");
@@ -118,13 +116,13 @@ class MapService {
     }
   }
 
-    // MAP SERVICE - ADD THIS METHOD
+  // MAP SERVICE - ADD THIS METHOD
   Future<Map<String, dynamic>> getNearestMenu(double lat, double lng) async {
     final token = await storage.read(key: 'auth_token');
     final platform = getPlatform();
     final url = Uri.parse(
-          "${ApiConfig.baseUrl}${ApiConfig.foodItemsEndpoint}?lat=$lat&lng=$lng"
-        );
+      "${ApiConfig.baseUrl}${ApiConfig.foodItemsEndpoint}?lat=$lat&lng=$lng",
+    );
 
     final response = await http.post(
       url,
@@ -133,10 +131,7 @@ class MapService {
         'Content-Type': 'application/json',
         'platform': platform,
       },
-      body: jsonEncode({
-        "latitude": lat,
-        "longitude": lng,
-      }),
+      body: jsonEncode({"latitude": lat, "longitude": lng}),
     );
 
     if (response.statusCode == 200 || response.statusCode == 201) {
@@ -145,5 +140,4 @@ class MapService {
       throw Exception("Failed to fetch nearest menu");
     }
   }
-
 }

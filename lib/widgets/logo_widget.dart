@@ -27,7 +27,6 @@ class LogoWidget extends StatelessWidget {
   }
 }
 
-
 // import 'package:flutter/material.dart';
 
 // class LogoWidget extends StatelessWidget {

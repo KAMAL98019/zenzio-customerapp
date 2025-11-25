@@ -15,7 +15,7 @@ class ApiConfig {
   static const String signupEndpoint = "/users/auth/signup/email";
   static const String loginEndpoint = "/users/auth/login/email";
   static const String firebaseSendVerificationEndpoint ="/firebase/send-verification";
-    static const String userProfileEndpoint = '/users/me';
+  static const String userProfileEndpoint = '/users/me';
   static const String otpSendEndpoint = '/otp/send';
   static const String otpVerifyEndpoint = '/otp/verify';
   static const String refreshAuth = "/users/refresh-auth";
@@ -62,8 +62,11 @@ static String getRestaurantMenu(String restaurantUid) {
     return "/restaurant-menu/by-restaurant?restaurant_uid=$restaurantUid";
   }
 
-  static const Duration connectTimeout = Duration(seconds: 5);
-  static const Duration receiveTimeout = Duration(seconds: 5);
+  static const Duration connectTimeout = Duration(seconds: 30);
+  static const Duration receiveTimeout = Duration(seconds: 30);
+
+
+
 
 
 
@@ -120,24 +123,6 @@ static String getRestaurantMenu(String restaurantUid) {
   static const String notificationsEndpoint = '$apiVersion/notifications';
   static String markNotificationReadEndpoint(String id) =>
       '$apiVersion/notifications/$id/read';
-
-  // ==================== HEADERS ====================
-
-  // static Map<String, String> get headers => {
-  //       'Content-Type': 'application/json',
-  //       'Accept': 'application/json',
-  //       'ngrok-skip-browser-warning': 'true',
-  //     };
-
-  // static Map<String, String> authHeaders(String token) => {
-  //       ...headers,
-  //       'Authorization': 'Bearer $token',
-  //     };
-
-  // ==================== TIMEOUTS ====================
-
-
-  // static foodsByRestaurantEndpoint(String restaurantId) {}
   
 }
 
@@ -156,53 +141,3 @@ class RazorpayConfig {
     return isProduction ? liveKeyId : testKeyId;
   }
 }
-
-
-
-// class RazorpayConfig {
-//   // ⚠️ IMPORTANT: Replace these with your actual Razorpay keys
-//   // Get your keys from: https://dashboard.razorpay.com/app/keys
-  
-//   // For Testing (Sandbox/Test Mode)
-//   static const String testKeyId = 'rzp_test_xxxxxxxxxxx'; // ⚠️ Replace with your test key
-//   static const String testKeySecret = 'your_test_secret_key'; // Only for backend
-  
-//   // For Production (Live Mode)
-//   static const String liveKeyId = 'rzp_live_xxxxxxxxxxx'; // ⚠️ Replace with your live key
-//   static const String liveKeySecret = 'your_live_secret_key'; // Only for backend
-  
-//   // Environment flag
-//   static const bool isProduction = false; // Set to true for production
-  
-//   // Get the current key based on environment
-//   static String get currentKeyId {
-//     return isProduction ? liveKeyId : testKeyId;
-//   }
-  
-//   // ⚠️ NEVER expose secret key in frontend
-//   // Secret keys should ONLY be used in backend
-  
-//   // Razorpay Test Cards (for testing)
-//   static const String testCardNumber = '4111 1111 1111 1111';
-//   static const String testCardCVV = '123';
-//   static const String testCardExpiry = '12/25';
-  
-//   // Test UPI ID
-//   static const String testUpiId = 'success@razorpay';
-// }
-
-// /* 
-//  * HOW TO GET YOUR RAZORPAY KEYS:
-//  * 
-//  * 1. Sign up at https://razorpay.com
-//  * 2. Go to Dashboard: https://dashboard.razorpay.com
-//  * 3. Navigate to Settings → API Keys
-//  * 4. Generate keys for Test Mode (for development)
-//  * 5. Later, generate keys for Live Mode (for production)
-//  * 
-//  * SECURITY NOTES:
-//  * - NEVER commit actual keys to Git
-//  * - Use environment variables for production
-//  * - Key ID (rzp_test_xxx) is safe for frontend
-//  * - Key Secret should ONLY be in backend
-//  */

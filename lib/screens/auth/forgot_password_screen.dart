@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:zenzio/services/auth_service.dart';
 
@@ -54,10 +53,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     if (result['success']) {
       _showSnackBar(result['message'], true);
-      Navigator.pushNamed(context, '/forgot-otp', arguments: {
-        'input': input,
-        'isEmail': _isEmail(input),
-      });
+      Navigator.pushNamed(
+        context,
+        '/forgot-otp',
+        arguments: {'input': input, 'isEmail': _isEmail(input)},
+      );
     } else {
       _showSnackBar(result['message'], false);
     }
@@ -178,7 +178,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 }
-
 
 // import 'package:flutter/material.dart';
 

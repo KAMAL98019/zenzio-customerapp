@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Temporary model for food item
 class Food {
   final String id;
   final String foodName;

@@ -81,7 +81,7 @@
 //     for (var food in foods) {
 //       // Get the category name from the mapping
 //       final categoryName = getCategoryName(food.categoryId);
-      
+
 //       if (!groupedFoods.containsKey(categoryName)) {
 //         groupedFoods[categoryName] = [];
 //       }
@@ -132,12 +132,7 @@
 //   }
 // }
 
-
 // }
-
-// lib/services/restaurant_service.dart
-// 
-
 
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -178,72 +173,70 @@ class RestaurantService {
   }
 
   // ✅ Fetch single restaurant details by ID
-Future<Restaurant> fetchRestaurantById(String restaurantUid) async {
-  try {
-    print("🔍 Fetching restaurant details for: $restaurantUid");
-    
-    final response = await _apiService.get(
-      '/restaurants/$restaurantUid',
-      requiresAuth: true,
-    );
+  Future<Restaurant> fetchRestaurantById(String restaurantUid) async {
+    try {
+      print("🔍 Fetching restaurant details for: $restaurantUid");
 
-    print("✅ Restaurant API Response: $response");
+      final response = await _apiService.get(
+        '/restaurants/$restaurantUid',
+        requiresAuth: true,
+      );
 
-    final restaurantData = response["data"]?["restaurant"];
-    
-    if (restaurantData == null) {
-      throw Exception("No restaurant data found");
+      print("✅ Restaurant API Response: $response");
+
+      final restaurantData = response["data"]?["restaurant"];
+
+      if (restaurantData == null) {
+        throw Exception("No restaurant data found");
+      }
+
+      // Extract profile
+      final profile = restaurantData['profile'] ?? {};
+      final List photos = profile['photo'] ?? [];
+      final String imageUrl = photos.isNotEmpty ? photos.first : "";
+
+      // Extract address
+      final address = restaurantData['address'] ?? {};
+      final String fullAddress = [
+        address['address'],
+        address['city'],
+        address['state'],
+        address['pincode'],
+      ].where((e) => e != null && e.toString().isNotEmpty).join(', ');
+
+      return Restaurant(
+        id: restaurantData['uid'] ?? restaurantUid,
+        restName: profile['restaurant_name'] ?? 'Unknown',
+        restAddress: fullAddress,
+        restLogo: imageUrl,
+        avgCostTwo: profile['avg_cost_for_two']?.toString() ?? '0',
+      );
+    } catch (e) {
+      print("❌ Failed to fetch restaurant: $e");
+      throw Exception("Failed to fetch restaurant: $e");
     }
-
-    // Extract profile
-    final profile = restaurantData['profile'] ?? {};
-    final List photos = profile['photo'] ?? [];
-    final String imageUrl = photos.isNotEmpty ? photos.first : "";
-
-    // Extract address
-    final address = restaurantData['address'] ?? {};
-    final String fullAddress = [
-      address['address'],
-      address['city'],
-      address['state'],
-      address['pincode']
-    ].where((e) => e != null && e.toString().isNotEmpty).join(', ');
-
-    return Restaurant(
-      id: restaurantData['uid'] ?? restaurantUid,
-      restName: profile['restaurant_name'] ?? 'Unknown',
-      restAddress: fullAddress,
-      restLogo: imageUrl,
-      avgCostTwo: profile['avg_cost_for_two']?.toString() ?? '0',
-    );
-  } catch (e) {
-    print("❌ Failed to fetch restaurant: $e");
-    throw Exception("Failed to fetch restaurant: $e");
   }
-}
 
   // ✅ Fetch all foods of a restaurant (using token)
- Future<List<Food>> fetchRestaurantFoods(String restaurantUid) async {
-  try {
-    final response = await ApiService().get(
-      ApiConfig.getRestaurantMenu(restaurantUid),
-      requiresAuth: true,
-    );
+  Future<List<Food>> fetchRestaurantFoods(String restaurantUid) async {
+    try {
+      final response = await ApiService().get(
+        ApiConfig.getRestaurantMenu(restaurantUid),
+        requiresAuth: true,
+      );
 
-    print("🍽 API Menu Response: $response");
+      print("🍽 API Menu Response: $response");
 
-    // Correct extraction
-    final jsonData = response["data"];
-    final List<dynamic> menuList = jsonData["restaurant_menus"] ?? [];
+      // Correct extraction
+      final jsonData = response["data"];
+      final List<dynamic> menuList = jsonData["restaurant_menus"] ?? [];
 
-    return menuList.map((item) => Food.fromJson(item)).toList();
-
-  } catch (e) {
-    print("❌ Failed to fetch foods: $e");
-    throw Exception("Failed to fetch foods: $e");
+      return menuList.map((item) => Food.fromJson(item)).toList();
+    } catch (e) {
+      print("❌ Failed to fetch foods: $e");
+      throw Exception("Failed to fetch foods: $e");
+    }
   }
-}
-
 
   // ✅ Category utilities
   String getCategoryName(String? categoryId) =>
@@ -260,7 +253,8 @@ Future<Restaurant> fetchRestaurantById(String restaurantUid) async {
 
   // ✅ Fetch & group foods
   Future<Map<String, List<Food>>> fetchRestaurantFoodsWithCategories(
-      String restaurantId) async {
+    String restaurantId,
+  ) async {
     if (restaurantId.isEmpty) return {};
     final foods = await fetchRestaurantFoods(restaurantId);
     return groupFoodsByCategoryName(foods);

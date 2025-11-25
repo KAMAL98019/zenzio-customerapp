@@ -101,6 +101,45 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   }
 
   // ---------------- SAVE ADDRESS ----------------
+// Future<void> _saveAddress() async {
+//   if (_streetController.text.trim().isEmpty) {
+//     _showToast("Please enter your complete address");
+//     return;
+//   }
+
+//   if (!mounted) return;
+//   setState(() => _isLoading = true);
+
+//   try {
+//     final body = {
+//       "address": _streetController.text.trim(),
+//       "lat": _latitude,
+//       "lng": _longitude,
+//       "is_default": true,
+//       "address_type": _selectedType,
+//     };
+
+//     final response = await ApiService().post(
+//       ApiConfig.deliveryLocation,
+//       body: body,
+//       requiresAuth: true,
+//     );
+
+//     print("✅ Address API Response: $response");
+
+//     _showToast("Address saved!", success: true);
+
+//     if (!mounted) return; 
+//     Navigator.pop(context, response["data"]?["location"]);
+
+//   } catch (e) {
+//     _showToast(e.toString());
+//   } finally {
+//     if (!mounted) return;
+//     setState(() => _isLoading = false);
+//   }
+// }
+
 Future<void> _saveAddress() async {
   if (_streetController.text.trim().isEmpty) {
     _showToast("Please enter your complete address");
@@ -129,8 +168,8 @@ Future<void> _saveAddress() async {
 
     _showToast("Address saved!", success: true);
 
-    if (!mounted) return; // ❗ screen இன்னும் openஆ இருக்கிறதா check
-    Navigator.pop(context, response["data"]?["location"]);
+    if (!mounted) return; 
+    Navigator.pop(context, true);  
 
   } catch (e) {
     _showToast(e.toString());
@@ -139,7 +178,6 @@ Future<void> _saveAddress() async {
     setState(() => _isLoading = false);
   }
 }
-
 
   void _showToast(String msg, {bool success = false}) {
   if (!mounted) return; // 🔥 Avoid calling after dispose

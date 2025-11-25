@@ -6,7 +6,7 @@ class LocationService {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       await Geolocator.openLocationSettings();
-      return null; // 🔥 Avoid crash
+      return null;
     }
 
     // Permission check
@@ -16,13 +16,13 @@ class LocationService {
       permission = await Geolocator.requestPermission();
 
       if (permission == LocationPermission.denied) {
-        return null; // ❗ User denied → return null safely
+        return null;
       }
     }
 
     if (permission == LocationPermission.deniedForever) {
       await Geolocator.openAppSettings();
-      return null; // ❗ Avoid crash
+      return null;
     }
 
     return await Geolocator.getCurrentPosition(

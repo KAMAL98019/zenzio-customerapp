@@ -21,7 +21,7 @@ class CustomButton extends StatelessWidget {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white, // ✅ makes text color white
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -33,7 +33,7 @@ class CustomButton extends StatelessWidget {
                 text,
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.white, // ✅ ensures white text explicitly
+                  color: Colors.white,
                 ),
               ),
       ),

@@ -4,7 +4,6 @@ import '../config/api_config.dart';
 class CartTransactionService {
   final ApiService _api = ApiService();
 
-  // ============================
   // CREATE CART TRANSACTION
   // ============================
   Future<Map<String, dynamic>> createCartTransaction({
@@ -40,10 +39,11 @@ class CartTransactionService {
     }
   }
 
-  // ============================
   // GET TRANSACTION DETAILS
   // ============================
-  Future<Map<String, dynamic>> getTransactionDetails(String transactionId) async {
+  Future<Map<String, dynamic>> getTransactionDetails(
+    String transactionId,
+  ) async {
     try {
       final response = await _api.get(
         "${ApiConfig.cartTransaction}/$transactionId",

@@ -249,11 +249,16 @@
 //   }
 // }
 
+
 // import 'dart:convert';
 // import 'package:flutter/material.dart';
 // import 'package:shared_preferences/shared_preferences.dart';
-// import '../../data/models/user_model.dart';
-// // ✅ Make sure this path is correct
+// import 'package:zenzio/services/auth_service.dart';
+// import '../../data/models/user_model.dart'; // ✅ Adjust this import path if needed
+// import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+// import 'dart:convert';
+
+// final storage = FlutterSecureStorage();
 
 // class ProfileScreen extends StatefulWidget {
 //   const ProfileScreen({super.key});
@@ -272,25 +277,61 @@
 //     _loadUser();
 //   }
 
-//   Future<void> _loadUser() async {
-//     final prefs = await SharedPreferences.getInstance();
-//     final userData = prefs.getString('user_data');
+// //   Future<void> _loadUser() async {
+// //   setState(() => _isLoading = true);
 
-//     if (userData != null) {
-//       try {
-//         final userMap = jsonDecode(userData);
-//         setState(() {
-//           _user = User.fromJson(userMap);
-//         });
-//       } catch (e) {
-//         print('❌ Error parsing user data: $e');
-//       }
-//     } else {
-//       print('⚠️ No user data found in SharedPreferences');
-//     }
+// //   try {
+// //     final token = await storage.read(key: 'auth_token');
+// //     final userId = await storage.read(key: 'user_id');
 
-//     setState(() => _isLoading = false);
+// //     if (token != null && userId != null) {
+// //       // 👇 Call API from auth_service.dart
+// //       final authService = AuthService();
+// //       final fetchedUser = await authService.getUserProfile();
+
+// //       setState(() {
+// //         _user = fetchedUser;
+// //       });
+
+// //       print("✅ User profile refreshed from backend");
+// //     } else {
+// //       print("⚠️ Token or User ID missing");
+// //     }
+
+// //   } catch (e) {
+// //     print("❌ Error fetching profile: $e");
+// //   }
+
+// //   setState(() => _isLoading = false);
+// // }
+
+// UserDisplay? _displayUser;
+
+// Future<void> _loadUser() async {
+//   setState(() => _isLoading = true);
+
+//   try {
+//     final authService = AuthService();
+//     final fetchedUser = await authService.getUserProfile();
+
+//     if (!mounted) return;
+
+//     setState(() {
+//       _user = fetchedUser;
+//       // Map fetched user to display model
+//       _displayUser = UserDisplay.fromUserJson(fetchedUser.toJson());
+//     });
+
+//     print('✅ User loaded: ${_displayUser?.name}');
+//   } catch (e) {
+//     print('❌ Failed to load user: $e');
 //   }
+
+//   if (!mounted) return;
+//   setState(() => _isLoading = false);
+// }
+
+
 
 //   @override
 //   Widget build(BuildContext context) {
@@ -315,7 +356,13 @@
 //         elevation: 0,
 //         leading: IconButton(
 //           icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
-//           onPressed: () => Navigator.pop(context),
+//          onPressed: () {
+//     Navigator.pushNamedAndRemoveUntil(
+//       context,
+//       '/main-navigation',
+//       (route) => false,   // 🔥 clears stack → direct to home
+//     );
+//   },
 //         ),
 //         title: const Text(
 //           'My Profile',
@@ -356,36 +403,33 @@
 //             const SizedBox(height: 16),
 
 //             // User info
-//             Text(
-//               _user!.name ?? 'Unknown User',
-//               style: const TextStyle(
-//                 fontSize: 20,
-//                 fontWeight: FontWeight.w600,
-//                 color: Color(0xFF2D2D2D),
-//               ),
-//             ),
+//            Text(
+//   _displayUser?.name ?? 'Unknown User',
+//   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+// ),
+// Text(
+//   _displayUser?.email ?? '',
+//   style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
+// ),
+// Text(
+//   _displayUser?.mobile ?? '',
+//   style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
+// ),
+
 //             const SizedBox(height: 4),
-//             Text(
-//               _user!.email ?? '',
-//               style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
-//             ),
-//             const SizedBox(height: 4),
-//             Text(
-//               _user!.mobile ?? '',
-//               style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
-//             ),
+//             // Text(
+//             //   _user!.mobile ?? '',
+//             //   style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
+//             // ),
 
 //             const SizedBox(height: 16),
 
-//             // Edit Profile
+//             // Edit Profile Button
 //             OutlinedButton.icon(
 //               onPressed: () async {
-//                 final updated = await Navigator.pushNamed(
-//                   context,
-//                   '/edit-profile',
-//                 );
+//                 final updated = await Navigator.pushNamed(context, '/edit-profile');
 //                 if (updated == true) {
-//                   _loadUser(); // 🔁 Reload user data from SharedPreferences
+//                   _loadUser(); // 🔁 Reload user data after editing
 //                 }
 //               },
 //               icon: const Icon(Icons.edit, color: Color(0xFFE53935), size: 18),
@@ -397,10 +441,7 @@
 //                 ),
 //               ),
 //               style: OutlinedButton.styleFrom(
-//                 padding: const EdgeInsets.symmetric(
-//                   horizontal: 24,
-//                   vertical: 10,
-//                 ),
+//                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
 //                 side: const BorderSide(color: Color(0xFFE53935)),
 //                 shape: RoundedRectangleBorder(
 //                   borderRadius: BorderRadius.circular(20),
@@ -409,6 +450,8 @@
 //             ),
 
 //             const SizedBox(height: 32),
+
+//             // Menu items
 //             _buildMenuItem(
 //               context,
 //               Icons.location_on_outlined,
@@ -447,6 +490,8 @@
 //             ),
 
 //             const SizedBox(height: 24),
+
+//             // Logout button
 //             OutlinedButton.icon(
 //               onPressed: () => _showLogoutDialog(context),
 //               icon: const Icon(Icons.logout, color: Color(0xFFE53935)),
@@ -565,13 +610,39 @@
 //   }
 // }
 
-import 'dart:convert';
+// class UserDisplay {
+//   final String name;
+//   final String email;
+//   final String mobile;
+
+//   UserDisplay({
+//     required this.name,
+//     required this.email,
+//     required this.mobile,
+//   });
+
+//   factory UserDisplay.fromUserJson(Map<String, dynamic> json) {
+//   String name = json['contact']?['encryptedUsername'] ??
+//                 json['contact']?['encryptedEmail'] ?? 
+//                 'Unknown User';
+//   String email = json['contact']?['encryptedEmail'] ?? '';
+//   String mobile = json['contact']?['encryptedPhone'] ?? '';
+
+//   return UserDisplay(
+//     name: name,
+//     email: email,
+//     mobile: mobile,
+//   );
+// }
+
+// }
+
+
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zenzio/services/auth_service.dart';
-import '../../data/models/user_model.dart'; // ✅ Adjust this import path if needed
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:convert';
+import 'package:zenzio/services/auth_service.dart';
+import '../../data/models/user_model.dart'; // Adjust path if needed
+import 'package:shared_preferences/shared_preferences.dart';
 
 final storage = FlutterSecureStorage();
 
@@ -584,6 +655,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   User? _user;
+  UserDisplay? _displayUser;
   bool _isLoading = true;
 
   @override
@@ -591,51 +663,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _loadUser();
   }
-
-//   Future<void> _loadUser() async {
-//   setState(() => _isLoading = true);
-
-//   try {
-//     final token = await storage.read(key: 'auth_token');
-//     final userId = await storage.read(key: 'user_id');
-
-//     if (token != null && userId != null) {
-//       // 👇 Call API from auth_service.dart
-//       final authService = AuthService();
-//       final fetchedUser = await authService.getUserProfile();
-
-//       setState(() {
-//         _user = fetchedUser;
-//       });
-
-//       print("✅ User profile refreshed from backend");
-//     } else {
-//       print("⚠️ Token or User ID missing");
-//     }
-
-//   } catch (e) {
-//     print("❌ Error fetching profile: $e");
-//   }
-
-//   setState(() => _isLoading = false);
-// }
-
-UserDisplay? _displayUser;
-
 Future<void> _loadUser() async {
   setState(() => _isLoading = true);
 
   try {
     final authService = AuthService();
-    final fetchedUser = await authService.getUserProfile();
+    final result = await authService.getUserProfileWithJson();
 
     if (!mounted) return;
 
-    setState(() {
-      _user = fetchedUser;
-      // Map fetched user to display model
-      _displayUser = UserDisplay.fromUserJson(fetchedUser.toJson());
-    });
+   setState(() {
+  _user = result['user'] as User;
+  print('🔍 JSON before parsing: ${result['json']}'); // Debug line
+  _displayUser = UserDisplay.fromUserJson(result['json'] as Map<String, dynamic>);
+});
 
     print('✅ User loaded: ${_displayUser?.name}');
   } catch (e) {
@@ -645,8 +686,6 @@ Future<void> _loadUser() async {
   if (!mounted) return;
   setState(() => _isLoading = false);
 }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -671,13 +710,13 @@ Future<void> _loadUser() async {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF2D2D2D)),
-         onPressed: () {
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      '/main-navigation',
-      (route) => false,   // 🔥 clears stack → direct to home
-    );
-  },
+          onPressed: () {
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/main-navigation',
+              (route) => false,
+            );
+          },
         ),
         title: const Text(
           'My Profile',
@@ -718,22 +757,16 @@ Future<void> _loadUser() async {
             const SizedBox(height: 16),
 
             // User info
-           Text(
-  _displayUser?.name ?? 'Unknown User',
-  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-),
-Text(
-  _displayUser?.email ?? '',
-  style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
-),
-Text(
-  _displayUser?.mobile ?? '',
-  style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
-),
-
-            const SizedBox(height: 4),
+            Text(
+              _displayUser?.name ?? 'Unknown User',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            Text(
+              _displayUser?.email ?? '',
+              style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
+            ),
             // Text(
-            //   _user!.mobile ?? '',
+            //   _displayUser?.mobile ?? '',
             //   style: const TextStyle(fontSize: 14, color: Color(0xFF757575)),
             // ),
 
@@ -744,7 +777,7 @@ Text(
               onPressed: () async {
                 final updated = await Navigator.pushNamed(context, '/edit-profile');
                 if (updated == true) {
-                  _loadUser(); // 🔁 Reload user data after editing
+                  _loadUser(); // Reload after editing
                 }
               },
               icon: const Icon(Icons.edit, color: Color(0xFFE53935), size: 18),
@@ -767,42 +800,12 @@ Text(
             const SizedBox(height: 32),
 
             // Menu items
-            _buildMenuItem(
-              context,
-              Icons.location_on_outlined,
-              'Saved Addresses',
-              '/saved-addresses',
-            ),
-            _buildMenuItem(
-              context,
-              Icons.payment_outlined,
-              'Payment Methods',
-              '/payment-methods',
-            ),
-            _buildMenuItem(
-              context,
-              Icons.notifications_outlined,
-              'Notifications',
-              '/notifications',
-            ),
-            _buildMenuItem(
-              context,
-              Icons.local_offer_outlined,
-              'My Coupons',
-              '/my-coupons',
-            ),
-            _buildMenuItem(
-              context,
-              Icons.help_outline,
-              'Help & Support',
-              '/help-support',
-            ),
-            _buildMenuItem(
-              context,
-              Icons.settings_outlined,
-              'Settings',
-              '/settings',
-            ),
+            _buildMenuItem(context, Icons.location_on_outlined, 'Saved Addresses', '/saved-addresses'),
+            _buildMenuItem(context, Icons.payment_outlined, 'Payment Methods', '/payment-methods'),
+            _buildMenuItem(context, Icons.notifications_outlined, 'Notifications', '/notifications'),
+            _buildMenuItem(context, Icons.local_offer_outlined, 'My Coupons', '/my-coupons'),
+            _buildMenuItem(context, Icons.help_outline, 'Help & Support', '/help-support'),
+            _buildMenuItem(context, Icons.settings_outlined, 'Settings', '/settings'),
 
             const SizedBox(height: 24),
 
@@ -832,17 +835,10 @@ Text(
     );
   }
 
-  Widget _buildMenuItem(
-    BuildContext context,
-    IconData icon,
-    String title,
-    String? route,
-  ) {
+  Widget _buildMenuItem(BuildContext context, IconData icon, String title, String? route) {
     return InkWell(
       onTap: () {
-        if (route != null) {
-          Navigator.pushNamed(context, route);
-        }
+        if (route != null) Navigator.pushNamed(context, route);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -866,11 +862,7 @@ Text(
                 ),
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: Color(0xFF9E9E9E),
-            ),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Color(0xFF9E9E9E)),
           ],
         ),
       ),
@@ -882,42 +874,19 @@ Text(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Logout',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-        ),
-        content: const Text(
-          'Are you sure you want to logout?',
-          style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
-        ),
+        title: const Text('Logout', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+        content: const Text('Are you sure you want to logout?', style: TextStyle(fontSize: 14, color: Color(0xFF757575))),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: Color(0xFF757575),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Color(0xFF757575), fontWeight: FontWeight.w500))),
           ElevatedButton(
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.clear();
+              await storage.deleteAll();
               Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE53935),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text(
-              'Logout',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE53935), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -925,27 +894,22 @@ Text(
   }
 }
 
+/// Display model for easier UI mapping
 class UserDisplay {
   final String name;
   final String email;
   final String mobile;
 
-  UserDisplay({
-    required this.name,
-    required this.email,
-    required this.mobile,
-  });
+  UserDisplay({required this.name, required this.email, required this.mobile});
 
-  factory UserDisplay.fromUserJson(Map<String, dynamic> json) {
-    // Map backend fields for display
-    String name = json['name'] ?? 'Unknown User';
-    String email = json['contact']?['encryptedEmail'] ?? '';
-    String mobile = json['contact']?['encryptedPhone'] ?? '';
+ factory UserDisplay.fromUserJson(Map<String, dynamic> json) {
+  final contact = json['contact'] ?? {};
 
-    return UserDisplay(
-      name: name,
-      email: email,
-      mobile: mobile,
-    );
-  }
+  String email = contact['encryptedEmail'] ?? '';
+  String mobile = contact['encryptedPhone'] ?? '';
+  String name = email.isNotEmpty ? email.split('@')[0] : 'Unknown User';
+
+  return UserDisplay(name: name, email: email, mobile: mobile);
+}
+
 }

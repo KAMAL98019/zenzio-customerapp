@@ -36,48 +36,138 @@ class ApiService {
   };
 
   // Get headers with optional auth token
-Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
-  final headers = {...defaultHeaders};
-  if (requiresAuth) {
-    final token = await _storage.read(key: 'auth_token');
-    if (token?.isNotEmpty == true) headers['Authorization'] = 'Bearer $token';
+  Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
+    final headers = {...defaultHeaders};
+    if (requiresAuth) {
+      final token = await _storage.read(key: 'auth_token');
+      if (token?.isNotEmpty == true) headers['Authorization'] = 'Bearer $token';
+    }
+    headers['platform'] = getPlatform();
+    headers['User-Agent'] = getPlatform();
+    headers['mode'] = 'development';
+    headers['clientId'] = ApiConfig.clientId;
+    headers['x-client-app'] = 'customer';
+    return headers;
   }
-  headers['platform'] = getPlatform();
-  headers['User-Agent'] = getPlatform();
-  headers['mode'] = 'development';
-  headers['clientId'] = ApiConfig.clientId;
-  headers['x-client-app'] = 'customer';
-  return headers;
-}
 
   // Handle API responses
+  // Future<dynamic> _handleResponse(http.Response response) async {
+  //   final statusCode = response.statusCode;
+  //   try {
+  //     if (response.body.isEmpty) {
+  //       if (statusCode >= 200 && statusCode < 300) return {'success': true};
+  //     }
+
+  //     final body = json.decode(response.body);
+
+  //     if (statusCode >= 200 && statusCode < 300) return body;
+
+  //     if (statusCode == 401) {
+  //       await _storage.delete(key: 'auth_token');
+  //       throw ApiException('Session expired. Please log in again.', statusCode: 401);
+  //     }
+
+  //     final errorMessage = body['message'] ??
+  //         body['error'] ??
+  //         body['detail'] ??
+  //         'An error occurred';
+
+  //     throw ApiException(errorMessage,
+  //         statusCode: statusCode, errors: body['errors'] ?? body['data']);
+  //   } catch (e) {
+  //     if (e is ApiException) rethrow;
+  //     throw ApiException('Failed to process response: $e',
+  //         statusCode: statusCode);
+  //   }
+  // }
+
+  // Handle API responses - Replace your existing _handleResponse method
   Future<dynamic> _handleResponse(http.Response response) async {
     final statusCode = response.statusCode;
+
+    print('📊 Response Status Code: $statusCode');
+    print('📊 Response Body: ${response.body}');
+
     try {
       if (response.body.isEmpty) {
         if (statusCode >= 200 && statusCode < 300) return {'success': true};
+        throw ApiException(
+          'Empty response with status $statusCode',
+          statusCode: statusCode,
+        );
       }
 
       final body = json.decode(response.body);
+      print('📊 Parsed Response: $body');
 
       if (statusCode >= 200 && statusCode < 300) return body;
 
       if (statusCode == 401) {
         await _storage.delete(key: 'auth_token');
-        throw ApiException('Session expired. Please log in again.', statusCode: 401);
+        throw ApiException(
+          'Session expired. Please log in again.',
+          statusCode: 401,
+        );
       }
 
-      final errorMessage = body['message'] ??
-          body['error'] ??
-          body['detail'] ??
-          'An error occurred';
+      // ✅ Enhanced error message extraction
+      String errorMessage = 'An error occurred';
+      dynamic errorDetails;
 
-      throw ApiException(errorMessage,
-          statusCode: statusCode, errors: body['errors'] ?? body['data']);
+      // Try multiple fields where error messages might be
+      if (body['message'] != null) {
+        errorMessage = body['message'].toString();
+      } else if (body['error'] != null) {
+        errorMessage = body['error'].toString();
+      } else if (body['detail'] != null) {
+        errorMessage = body['detail'].toString();
+      }
+
+      // Check for details field
+      if (body['details'] != null) {
+        errorDetails = body['details'];
+        if (errorDetails is List && errorDetails.isNotEmpty) {
+          errorMessage = errorDetails.join(', ');
+        } else if (errorDetails is String) {
+          errorMessage = errorDetails;
+        }
+      }
+
+      // Check for validation errors
+      if (body['errors'] != null) {
+        errorDetails = body['errors'];
+        if (errorDetails is Map) {
+          final errorList = errorDetails.values.toList();
+          errorMessage = errorList.join(', ');
+        } else if (errorDetails is List) {
+          errorMessage = errorDetails.join(', ');
+        }
+      }
+
+      // Check for data field with nested errors
+      if (body['data'] != null && body['data'] is Map) {
+        final data = body['data'] as Map;
+        if (data['message'] != null) {
+          errorMessage = data['message'].toString();
+        }
+      }
+
+      print('❌ Error extracted: $errorMessage');
+      print('❌ Error details: $errorDetails');
+
+      throw ApiException(
+        errorMessage,
+        statusCode: statusCode,
+        errors: errorDetails ?? body['errors'] ?? body['data'],
+      );
     } catch (e) {
       if (e is ApiException) rethrow;
-      throw ApiException('Failed to process response: $e',
-          statusCode: statusCode);
+
+      print('❌ Failed to parse response: $e');
+      throw ApiException(
+        'Failed to process response: ${response.body}',
+        statusCode: statusCode,
+      );
     }
   }
 
@@ -85,8 +175,8 @@ Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
   Future<dynamic> get(String endpoint, {bool requiresAuth = false}) async {
     try {
       final headers = await _getHeaders(requiresAuth: requiresAuth);
-       headers.addAll({
-        'platform': ApiService.getPlatform(), 
+      headers.addAll({
+        'platform': ApiService.getPlatform(),
         'User-Agent': ApiService.getPlatform(),
         'mode': 'development',
         'clientId': ApiConfig.clientId,
@@ -102,32 +192,73 @@ Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
   }
 
   // POST
-  Future<dynamic> post(String endpoint,
-      {required Map<String, dynamic> body, bool requiresAuth = false}) async {
+  // Future<dynamic> post(String endpoint,
+  //     {required Map<String, dynamic> body, bool requiresAuth = false}) async {
+  //   try {
+  //     final headers = await _getHeaders(requiresAuth: requiresAuth);
+
+  //     headers.addAll({
+  //       'platform': ApiService.getPlatform(),
+  //       'User-Agent': ApiService.getPlatform(),
+  //       'mode': 'development',
+  //       'clientId': ApiConfig.clientId,
+  //     });
+
+  //     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+  //     final response = await http
+  //         .post(uri, headers: headers, body: jsonEncode(body))
+  //         .timeout(ApiConfig.connectTimeout);
+
+  //     return _handleResponse(response);
+  //   } catch (e) {
+  //     throw ApiException('POST request failed: $e');
+  //   }
+  // }
+  // POST - Replace your existing POST method in ApiService with this debug version
+  Future<dynamic> post(
+    String endpoint, {
+    required Map<String, dynamic> body,
+    bool requiresAuth = false,
+  }) async {
     try {
       final headers = await _getHeaders(requiresAuth: requiresAuth);
 
       headers.addAll({
-        'platform': ApiService.getPlatform(), 
+        'platform': ApiService.getPlatform(),
         'User-Agent': ApiService.getPlatform(),
         'mode': 'development',
         'clientId': ApiConfig.clientId,
       });
 
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+
+      // ✅ CRITICAL DEBUG LOGS
+      print('🌐 POST Request Details:');
+      print('   URL: $uri');
+      print('   Headers: $headers');
+      print('   Body: ${jsonEncode(body)}');
+      print('   Body Keys: ${body.keys.toList()}');
+
       final response = await http
           .post(uri, headers: headers, body: jsonEncode(body))
           .timeout(ApiConfig.connectTimeout);
 
+      print('📥 Response Status: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
       return _handleResponse(response);
     } catch (e) {
+      print('❌ POST request exception: $e');
       throw ApiException('POST request failed: $e');
     }
   }
 
   // PUT
-  Future<dynamic> put(String endpoint,
-      {required Map<String, dynamic> body, bool requiresAuth = false}) async {
+  Future<dynamic> put(
+    String endpoint, {
+    required Map<String, dynamic> body,
+    bool requiresAuth = false,
+  }) async {
     try {
       final headers = await _getHeaders(requiresAuth: requiresAuth);
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
@@ -140,29 +271,34 @@ Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
     }
   }
 
-// PATCH
-Future<dynamic> patch(String endpoint,
-    {required Map<String, dynamic> body, bool requiresAuth = false}) async {
-  try {
-    final headers = await _getHeaders(requiresAuth: requiresAuth);
-    final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-    final response = await http
-        .patch(uri, headers: headers, body: jsonEncode(body))
-        .timeout(ApiConfig.connectTimeout);
-    return _handleResponse(response);
-  } catch (e) {
-    throw ApiException('PATCH request failed: $e');
+  // PATCH
+  Future<dynamic> patch(
+    String endpoint, {
+    required Map<String, dynamic> body,
+    bool requiresAuth = false,
+  }) async {
+    try {
+      final headers = await _getHeaders(requiresAuth: requiresAuth);
+      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+      final response = await http
+          .patch(uri, headers: headers, body: jsonEncode(body))
+          .timeout(ApiConfig.connectTimeout);
+      return _handleResponse(response);
+    } catch (e) {
+      throw ApiException('PATCH request failed: $e');
+    }
   }
-}
-
 
   // DELETE
-  Future<dynamic> delete(String endpoint,
-      {Map<String, dynamic>? body, bool requiresAuth = false}) async {
+  Future<dynamic> delete(
+    String endpoint, {
+    Map<String, dynamic>? body,
+    bool requiresAuth = false,
+  }) async {
     try {
       final headers = await _getHeaders(requiresAuth: requiresAuth);
       headers.addAll({
-        'platform': ApiService.getPlatform(), 
+        'platform': ApiService.getPlatform(),
         'User-Agent': ApiService.getPlatform(),
         'mode': 'development',
         'clientId': ApiConfig.clientId,
@@ -171,7 +307,11 @@ Future<dynamic> patch(String endpoint,
 
       // http.delete supports a body param (string) — encode if provided
       final response = await http
-          .delete(uri, headers: headers, body: body != null ? jsonEncode(body) : null)
+          .delete(
+            uri,
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
           .timeout(ApiConfig.connectTimeout);
 
       return _handleResponse(response);
@@ -181,11 +321,13 @@ Future<dynamic> patch(String endpoint,
   }
 
   // Multipart
-  Future<dynamic> multipartRequest(String endpoint,
-      {required String method,
-      required Map<String, String> fields,
-      required Map<String, File> files,
-      bool requiresAuth = false}) async {
+  Future<dynamic> multipartRequest(
+    String endpoint, {
+    required String method,
+    required Map<String, String> fields,
+    required Map<String, File> files,
+    bool requiresAuth = false,
+  }) async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
       final request = http.MultipartRequest(method, uri);
@@ -194,8 +336,9 @@ Future<dynamic> patch(String endpoint,
       fields.forEach((key, value) => request.fields[key] = value);
 
       for (final entry in files.entries) {
-        request.files.add(await http.MultipartFile.fromPath(
-            entry.key, entry.value.path));
+        request.files.add(
+          await http.MultipartFile.fromPath(entry.key, entry.value.path),
+        );
       }
 
       final response = await request.send();
@@ -205,8 +348,10 @@ Future<dynamic> patch(String endpoint,
         return jsonDecode(responseBody);
       }
 
-      throw ApiException('Upload failed: ${response.statusCode}',
-          statusCode: response.statusCode);
+      throw ApiException(
+        'Upload failed: ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
     } catch (e) {
       throw ApiException('Multipart request failed: $e');
     }
