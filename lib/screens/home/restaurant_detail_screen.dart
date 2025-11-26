@@ -687,6 +687,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
   int _quantity = 1;
   String _size = 'Medium';
   String _spice = 'Medium';
+  bool _isAddingToCart = false;
 
   double get _total {
     double base = widget.food.price;

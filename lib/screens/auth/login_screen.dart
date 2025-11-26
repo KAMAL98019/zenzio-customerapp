@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:zenzio/core/status_codes.dart';
+import '../../widgets/logo_widget.dart';
 import '../../widgets/custom_button.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/auth_service.dart';
@@ -41,60 +44,78 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   // ===================== PHONE LOGIN (OTP) =====================
-  Future<void> _handlePhoneLogin() async {
-    final phone = _phoneController.text.trim();
+ Future<void> _handlePhoneLogin() async {
+  final phone = _phoneController.text.trim();
 
-    if (phone.isEmpty) {
-      _showErrorDialog('Please enter your phone number');
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _authService.sendOTP(
-        phone: phone,
-        countryCode: _selectedCountryCode,
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('OTP sent successfully to $_selectedCountryCode$phone'),
-          backgroundColor: Colors.green,
-        ),
-      );
-
-      // Navigate to OTP verification page
-      Navigator.pushNamed(
-        context,
-        '/otp',
-        arguments: {'phone': phone, 'countryCode': _selectedCountryCode},
-      );
-    } on ApiException catch (e) {
-      // ✅ Extract and show details from the error
-      String errorMessage = 'Something went wrong';
-
-      // If error contains details array, show those instead
-      if (errorMessage.contains('details')) {
-        try {
-          final regex = RegExp(r'"details":\[(.*?)\]');
-          final match = regex.firstMatch(errorMessage);
-          if (match != null) {
-            String details = match.group(1) ?? '';
-            details = details.replaceAll('"', '').replaceAll(',', '\n• ');
-            errorMessage = '• $details';
-          }
-        } catch (_) {}
-      }
-
-      _showErrorDialog(errorMessage);
-    } catch (e) {
-      _showErrorDialog('Failed to send OTP. Please try again.');
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  if (phone.isEmpty) {
+    _showErrorDialog('Please enter your phone number');
+    return;
   }
+
+  if (phone.length != 10) {
+    _showErrorDialog('Please enter a valid 10-digit phone number');
+    return;
+  }
+
+  setState(() => _isLoading = true);
+
+  try {
+    await _authService.sendOTP(
+      phone: phone,
+      countryCode: _selectedCountryCode,
+    );
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('OTP sent successfully to $_selectedCountryCode$phone'),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    Navigator.pushNamed(
+      context,
+      '/otp',
+      arguments: {'phone': phone, 'countryCode': _selectedCountryCode},
+    );
+  } on ApiException catch (e) {
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    String errorMessage = e.message;
+
+    // Extract clean JSON part if present
+    try {
+      final match = RegExp(r'\{.*\}').firstMatch(e.message);
+      if (match != null) {
+        final Map<String, dynamic> errorJson = jsonDecode(match.group(0)!);
+
+        if (errorJson.containsKey('message')) {
+          errorMessage = errorJson['message'];
+        } else if (errorJson.containsKey('details')) {
+          final details = errorJson['details'];
+          if (details is List) {
+            errorMessage = details.join("\n");
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 🎯 Convert backend error CODE → Human readable message
+    errorMessage = StatusMessages.get(errorMessage);
+
+    _showErrorDialog(errorMessage);
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+    _showErrorDialog('Failed to send OTP. Please try again.');
+  }
+}
 
   // ===================== EMAIL LOGIN =====================
   Future<void> _handleEmailLogin() async {
@@ -103,6 +124,13 @@ class _LoginScreenState extends State<LoginScreen>
 
     if (email.isEmpty || password.isEmpty) {
       _showErrorDialog('Please enter both email and password');
+      return;
+    }
+
+    // ✅ Email validation
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(email)) {
+      _showErrorDialog('Please enter a valid email address');
       return;
     }
 
@@ -117,6 +145,8 @@ class _LoginScreenState extends State<LoginScreen>
       print('✅ Login completed successfully');
 
       if (!mounted) return;
+
+      setState(() => _isLoading = false);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -133,12 +163,14 @@ class _LoginScreenState extends State<LoginScreen>
         (route) => false,
       );
     } on ApiException catch (e) {
+      if (!mounted) return;
+      
+      setState(() => _isLoading = false);
+      
       print('⚠️ API Error: ${e.message}');
 
-      // 👇 Try to parse the raw API response to show "details" message
       String errorMessage = e.message;
       try {
-        // Parse the JSON string from e.message if it contains full response
         final RegExp jsonFinder = RegExp(r'\{.*\}');
         final match = jsonFinder.firstMatch(e.message);
         if (match != null) {
@@ -147,21 +179,24 @@ class _LoginScreenState extends State<LoginScreen>
 
           if (errorData.containsKey('details') &&
               errorData['details'] is List) {
-            errorMessage = errorData['details'].join('\n');
+            errorMessage = (errorData['details'] as List).join('\n');
           } else if (errorData.containsKey('details')) {
-            errorMessage = errorData['details'];
+            errorMessage = errorData['details'].toString();
+          } else if (errorData.containsKey('message')) {
+            errorMessage = errorData['message'].toString();
           }
         }
       } catch (_) {
-        // If parsing fails, keep default message
+        // If parsing fails, use original message
       }
 
-      _showErrorDialog("something went wrong");
+      _showErrorDialog(errorMessage);
     } catch (e) {
+      if (!mounted) return;
+      
+      setState(() => _isLoading = false);
       print('❌ Unexpected error: $e');
       _showErrorDialog('An unexpected error occurred. Please try again.');
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
@@ -323,7 +358,12 @@ class _LoginScreenState extends State<LoginScreen>
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 enabled: !_isLoading,
-                decoration: _inputDecoration('Enter your mobile number'),
+                maxLength: 10,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+                decoration: _inputDecoration('Enter 10-digit mobile number'),
               ),
             ),
           ],
@@ -420,6 +460,7 @@ class _LoginScreenState extends State<LoginScreen>
         borderSide: const BorderSide(color: AppColors.primary),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      counterText: '', // ✅ Hide counter text
     );
   }
 
@@ -448,6 +489,457 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 }
+
+// import 'dart:convert';
+// import 'package:flutter/gestures.dart';
+// import 'package:flutter/material.dart';
+// import '../../widgets/custom_button.dart';
+// import '../../core/constants/app_colors.dart';
+// import '../../services/auth_service.dart';
+// import '../../services/api_service.dart';
+
+// class LoginScreen extends StatefulWidget {
+//   const LoginScreen({super.key});
+
+//   @override
+//   State<LoginScreen> createState() => _LoginScreenState();
+// }
+
+// class _LoginScreenState extends State<LoginScreen>
+//     with SingleTickerProviderStateMixin {
+//   late TabController _tabController;
+//   final TextEditingController _phoneController = TextEditingController();
+//   final TextEditingController _emailController = TextEditingController();
+//   final TextEditingController _passwordController = TextEditingController();
+//   bool _obscurePassword = true;
+//   String _selectedCountryCode = '+91';
+//   bool _isLoading = false;
+
+//   final AuthService _authService = AuthService();
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _tabController = TabController(length: 2, vsync: this);
+//   }
+
+//   @override
+//   void dispose() {
+//     _tabController.dispose();
+//     _phoneController.dispose();
+//     _emailController.dispose();
+//     _passwordController.dispose();
+//     super.dispose();
+//   }
+
+//   // ===================== PHONE LOGIN (OTP) =====================
+//   Future<void> _handlePhoneLogin() async {
+//     final phone = _phoneController.text.trim();
+
+//     if (phone.isEmpty) {
+//       _showErrorDialog('Please enter your phone number');
+//       return;
+//     }
+
+//     setState(() => _isLoading = true);
+
+//     try {
+//       await _authService.sendOTP(
+//         phone: phone,
+//         countryCode: _selectedCountryCode,
+//       );
+
+//       if (!mounted) return;
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('OTP sent successfully to $_selectedCountryCode$phone'),
+//           backgroundColor: Colors.green,
+//         ),
+//       );
+
+//       // Navigate to OTP verification page
+//       Navigator.pushNamed(
+//         context,
+//         '/otp',
+//         arguments: {'phone': phone, 'countryCode': _selectedCountryCode},
+//       );
+//     } on ApiException catch (e) {
+//       // ✅ Extract and show details from the error
+//       String errorMessage = 'Something went wrong';
+
+//       // If error contains details array, show those instead
+//       if (errorMessage.contains('details')) {
+//         try {
+//           final regex = RegExp(r'"details":\[(.*?)\]');
+//           final match = regex.firstMatch(errorMessage);
+//           if (match != null) {
+//             String details = match.group(1) ?? '';
+//             details = details.replaceAll('"', '').replaceAll(',', '\n• ');
+//             errorMessage = '• $details';
+//           }
+//         } catch (_) {}
+//       }
+
+//       _showErrorDialog(errorMessage);
+//     } catch (e) {
+//       _showErrorDialog('Failed to send OTP. Please try again.');
+//     } finally {
+//       setState(() => _isLoading = false);
+//     }
+//   }
+
+//   // ===================== EMAIL LOGIN =====================
+//   Future<void> _handleEmailLogin() async {
+//     final email = _emailController.text.trim();
+//     final password = _passwordController.text;
+
+//     if (email.isEmpty || password.isEmpty) {
+//       _showErrorDialog('Please enter both email and password');
+//       return;
+//     }
+
+//     setState(() => _isLoading = true);
+
+//     try {
+//       final loginResponse = await _authService.loginWithEmail(
+//         email: email,
+//         password: password,
+//       );
+
+//       print('✅ Login completed successfully');
+
+//       if (!mounted) return;
+
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         const SnackBar(
+//           content: Text('Login successful!'),
+//           backgroundColor: Colors.green,
+//         ),
+//       );
+
+//       await Future.delayed(const Duration(milliseconds: 500));
+
+//       Navigator.pushNamedAndRemoveUntil(
+//         context,
+//         '/main-navigation',
+//         (route) => false,
+//       );
+//     } on ApiException catch (e) {
+//       print('⚠️ API Error: ${e.message}');
+
+//       // 👇 Try to parse the raw API response to show "details" message
+//       String errorMessage = e.message;
+//       try {
+//         // Parse the JSON string from e.message if it contains full response
+//         final RegExp jsonFinder = RegExp(r'\{.*\}');
+//         final match = jsonFinder.firstMatch(e.message);
+//         if (match != null) {
+//           final jsonString = match.group(0)!;
+//           final Map<String, dynamic> errorData = jsonDecode(jsonString);
+
+//           if (errorData.containsKey('details') &&
+//               errorData['details'] is List) {
+//             errorMessage = errorData['details'].join('\n');
+//           } else if (errorData.containsKey('details')) {
+//             errorMessage = errorData['details'];
+//           }
+//         }
+//       } catch (_) {
+//         // If parsing fails, keep default message
+//       }
+
+//       _showErrorDialog("something went wrong");
+//     } catch (e) {
+//       print('❌ Unexpected error: $e');
+//       _showErrorDialog('An unexpected error occurred. Please try again.');
+//     } finally {
+//       setState(() => _isLoading = false);
+//     }
+//   }
+
+//   // ===================== UI HELPERS =====================
+//   void _showErrorDialog(String message) {
+//     showDialog(
+//       context: context,
+//       builder: (context) => AlertDialog(
+//         title: const Text('Error'),
+//         content: Text(message),
+//         actions: [
+//           TextButton(
+//             onPressed: () => Navigator.pop(context),
+//             child: const Text('OK'),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   // ===================== MAIN UI =====================
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: SafeArea(
+//         child: Stack(
+//           children: [
+//             SingleChildScrollView(
+//               padding: const EdgeInsets.all(24),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.center,
+//                 children: [
+//                   const SizedBox(height: 40),
+//                   Image.asset(
+//                     'assets/images/zenzioicon.png',
+//                     height: 90,
+//                     errorBuilder: (context, error, stackTrace) =>
+//                         const Text(
+//                           'Zenzio',
+//                           style: TextStyle(
+//                             fontSize: 42,
+//                             fontWeight: FontWeight.bold,
+//                             color: AppColors.primary,
+//                           ),
+//                         ),
+//                   ),
+//                   const SizedBox(height: 16),
+//                   const Text(
+//                     'Welcome Back!',
+//                     style: TextStyle(
+//                       fontSize: 24,
+//                       fontWeight: FontWeight.w600,
+//                       color: AppColors.secondary,
+//                     ),
+//                   ),
+//                   const SizedBox(height: 32),
+//                   Container(
+//                     decoration: BoxDecoration(
+//                       color: AppColors.background,
+//                       borderRadius: BorderRadius.circular(8),
+//                     ),
+//                     child: TabBar(
+//                       controller: _tabController,
+//                       indicator: BoxDecoration(
+//                         color: Colors.white,
+//                         borderRadius: BorderRadius.circular(8),
+//                         boxShadow: [
+//                           BoxShadow(
+//                             color: Colors.black.withOpacity(0.05),
+//                             blurRadius: 4,
+//                             offset: const Offset(0, 2),
+//                           ),
+//                         ],
+//                       ),
+//                       indicatorSize: TabBarIndicatorSize.tab,
+//                       labelColor: AppColors.secondary,
+//                       unselectedLabelColor: AppColors.textLight,
+//                       labelStyle: const TextStyle(
+//                         fontSize: 14,
+//                         fontWeight: FontWeight.w500,
+//                       ),
+//                       tabs: const [
+//                         Tab(text: 'Phone Number (OTP)'),
+//                         Tab(text: 'Email & Password'),
+//                       ],
+//                     ),
+//                   ),
+//                   const SizedBox(height: 32),
+//                   SizedBox(
+//                     height: 360,
+//                     child: TabBarView(
+//                       controller: _tabController,
+//                       children: [_buildPhoneLoginTab(), _buildEmailLoginTab()],
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//             if (_isLoading)
+//               Container(
+//                 color: Colors.black.withOpacity(0.3),
+//                 child: const Center(
+//                   child: CircularProgressIndicator(
+//                     valueColor: AlwaysStoppedAnimation<Color>(
+//                       AppColors.primary,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   // ===================== PHONE LOGIN TAB =====================
+//   Widget _buildPhoneLoginTab() {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Row(
+//           children: [
+//             Container(
+//               width: 80,
+//               height: 56,
+//               decoration: BoxDecoration(
+//                 border: Border.all(color: const Color(0xFFE0E0E0)),
+//                 borderRadius: BorderRadius.circular(10),
+//               ),
+//               child: Center(
+//                 child: DropdownButton<String>(
+//                   value: _selectedCountryCode,
+//                   underline: const SizedBox(),
+//                   items: ['+1', '+91', '+44', '+61']
+//                       .map(
+//                         (code) => DropdownMenuItem(
+//                           value: code,
+//                           child: Text(
+//                             code,
+//                             style: const TextStyle(
+//                               fontSize: 16,
+//                               fontWeight: FontWeight.w500,
+//                             ),
+//                           ),
+//                         ),
+//                       )
+//                       .toList(),
+//                   onChanged: (value) {
+//                     setState(() {
+//                       _selectedCountryCode = value!;
+//                     });
+//                   },
+//                 ),
+//               ),
+//             ),
+//             const SizedBox(width: 12),
+//             Expanded(
+//               child: TextField(
+//                 controller: _phoneController,
+//                 keyboardType: TextInputType.phone,
+//                 enabled: !_isLoading,
+//                 decoration: _inputDecoration('Enter your mobile number'),
+//               ),
+//             ),
+//           ],
+//         ),
+//         const SizedBox(height: 20),
+//         CustomButton(
+//           text: 'Continue',
+//           onPressed: _handlePhoneLogin,
+//           isLoading: _isLoading,
+//         ),
+//         const SizedBox(height: 16),
+//         _buildSignUpText(),
+//       ],
+//     );
+//   }
+
+//   // ===================== EMAIL LOGIN TAB =====================
+//   Widget _buildEmailLoginTab() {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         TextField(
+//           controller: _emailController,
+//           keyboardType: TextInputType.emailAddress,
+//           enabled: !_isLoading,
+//           decoration: _inputDecoration('Enter your registered email'),
+//         ),
+//         const SizedBox(height: 16),
+//         TextField(
+//           controller: _passwordController,
+//           obscureText: _obscurePassword,
+//           enabled: !_isLoading,
+//           decoration: _inputDecoration('Enter your password').copyWith(
+//             suffixIcon: IconButton(
+//               icon: Icon(
+//                 _obscurePassword ? Icons.visibility_off : Icons.visibility,
+//                 color: const Color(0xFF9E9E9E),
+//               ),
+//               onPressed: () {
+//                 setState(() {
+//                   _obscurePassword = !_obscurePassword;
+//                 });
+//               },
+//             ),
+//           ),
+//         ),
+//         const SizedBox(height: 8),
+//         Align(
+//           alignment: Alignment.centerRight,
+//           child: TextButton(
+//             onPressed: _isLoading
+//                 ? null
+//                 : () {
+//                     Navigator.pushNamed(context, '/forgot-password');
+//                   },
+//             style: TextButton.styleFrom(padding: EdgeInsets.zero),
+//             child: const Text(
+//               'Forgot Password?',
+//               style: TextStyle(
+//                 color: AppColors.primary,
+//                 fontSize: 13,
+//                 fontWeight: FontWeight.w500,
+//               ),
+//             ),
+//           ),
+//         ),
+//         const SizedBox(height: 8),
+//         CustomButton(
+//           text: 'Login',
+//           onPressed: _handleEmailLogin,
+//           isLoading: _isLoading,
+//         ),
+//         const SizedBox(height: 16),
+//         _buildSignUpText(),
+//       ],
+//     );
+//   }
+
+//   // ===================== COMMON INPUT FIELD STYLE =====================
+//   InputDecoration _inputDecoration(String hint) {
+//     return InputDecoration(
+//       hintText: hint,
+//       hintStyle: const TextStyle(color: Color(0xFFBDBDBD), fontSize: 14),
+//       border: OutlineInputBorder(
+//         borderRadius: BorderRadius.circular(10),
+//         borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+//       ),
+//       enabledBorder: OutlineInputBorder(
+//         borderRadius: BorderRadius.circular(10),
+//         borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+//       ),
+//       focusedBorder: OutlineInputBorder(
+//         borderRadius: BorderRadius.circular(10),
+//         borderSide: const BorderSide(color: AppColors.primary),
+//       ),
+//       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+//     );
+//   }
+
+//   // ===================== SIGNUP TEXT =====================
+//   Widget _buildSignUpText() {
+//     return Center(
+//       child: RichText(
+//         text: TextSpan(
+//           text: "Don't have an account? ",
+//           style: const TextStyle(color: AppColors.textLight, fontSize: 14),
+//           children: [
+//             TextSpan(
+//               text: 'Sign up',
+//               style: const TextStyle(
+//                 color: AppColors.primary,
+//                 fontWeight: FontWeight.w600,
+//               ),
+//               recognizer: TapGestureRecognizer()
+//                 ..onTap = () {
+//                   Navigator.pushNamed(context, '/signup');
+//                 },
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 // import 'package:flutter/gestures.dart';
 // import 'package:flutter/material.dart';

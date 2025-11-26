@@ -53,11 +53,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     if (result['success']) {
       _showSnackBar(result['message'], true);
-      Navigator.pushNamed(
-        context,
-        '/forgot-otp',
-        arguments: {'input': input, 'isEmail': _isEmail(input)},
-      );
+      // Navigator.pushNamed(
+      //   context,
+      //   '/forgot-otp',
+      //   arguments: {'input': input, 'isEmail': _isEmail(input)},
+      // );
+     Navigator.pushNamed(
+  context,
+  '/reset-link-sent',
+  arguments: _inputController.text.trim(),
+);
+
+
     } else {
       _showSnackBar(result['message'], false);
     }
@@ -114,7 +121,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Enter your registered mobile number or email\nto receive a verification code.',
+                // 'Enter your registered mobile number or email\nto receive a verification code.',
+                'Enter your registered email\nto receive a verification Link.',
                 style: TextStyle(
                   fontSize: 14,
                   color: Color(0xFF757575),
@@ -127,7 +135,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 controller: _inputController,
                 keyboardType: TextInputType.text,
                 decoration: InputDecoration(
-                  hintText: 'Enter your mobile number or email',
+                  hintText: 'Enter your email',
                   hintStyle: const TextStyle(
                     color: Color(0xFFBDBDBD),
                     fontSize: 14,

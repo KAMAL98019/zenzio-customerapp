@@ -15,7 +15,7 @@ class CartScreen extends StatefulWidget {
 class _CartScreenState extends State<CartScreen> {
   final TextEditingController _couponController = TextEditingController();
   final CartService _cartService = CartService();
-// final cartDetails = await _cartService.getCartDetailsWithRestaurant(_restaurantId!);
+  // final cartDetails = await _cartService.getCartDetailsWithRestaurant(_restaurantId!);
 
   bool _isLoading = true;
   String? _errorMessage;

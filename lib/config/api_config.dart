@@ -14,6 +14,7 @@ class ApiConfig {
   // ==================== NEW AUTH ENDPOINTS ==================== 
   static const String signupEndpoint = "/users/auth/signup/email";
   static const String loginEndpoint = "/users/auth/login/email";
+  static const String loginWithOtpEndpoint = "/users/auth/login/otp"; 
   static const String firebaseSendVerificationEndpoint ="/firebase/send-verification";
   static const String userProfileEndpoint = '/users/me';
   static const String otpSendEndpoint = '/otp/send';

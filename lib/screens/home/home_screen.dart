@@ -761,14 +761,484 @@
 //   }
 // }
 
-import 'dart:convert';
+
+// main new auth
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:zenzio/services/location_service.dart';
+// import 'package:zenzio/services/map_service.dart';
+// import 'restaurant_detail_screen.dart';
+// import '../../config/api_config.dart';
+
+// class HomeScreen extends StatefulWidget {
+//   const HomeScreen({super.key});
+
+//   @override
+//   State<HomeScreen> createState() => _HomeScreenState();
+// }
+
+// class _HomeScreenState extends State<HomeScreen> {
+//   final TextEditingController _searchController = TextEditingController();
+//   final storage = const FlutterSecureStorage();
+
+//   List<dynamic> _nearbyRestaurants = [];
+//   bool _isLoading = true;
+//   bool _hasError = false;
+//   String _errorMessage = '';
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _initializeScreen();
+//   }
+
+//   /// Initialize screen and load data
+//   Future<void> _initializeScreen() async {
+//     // Wait for frame to be rendered
+//     await Future.delayed(const Duration(milliseconds: 50));
+    
+//     // Check if user is logged in
+//     final token = await storage.read(key: 'auth_token');
+    
+//     if (token == null || token.isEmpty) {
+//       if (mounted) {
+//         setState(() {
+//           _hasError = true;
+//           _errorMessage = 'Please log in to continue';
+//           _isLoading = false;
+//         });
+        
+//         // Show error and navigate to login
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             content: Text('Please log in to view restaurants'),
+//             backgroundColor: Colors.orange,
+//             duration: Duration(seconds: 2),
+//           ),
+//         );
+        
+//         // Navigate to login after delay
+//         Future.delayed(const Duration(seconds: 1), () {
+//           if (mounted) {
+//             Navigator.pushReplacementNamed(context, '/');
+//           }
+//         });
+//       }
+//       return;
+//     }
+    
+//     // Load nearby restaurants
+//     await _loadNearbyRestaurants();
+//   }
+
+//   @override
+//   void dispose() {
+//     _searchController.dispose();
+//     super.dispose();
+//   }
+
+//   /// Load nearby restaurants based on current location
+//   Future<void> _loadNearbyRestaurants() async {
+//     if (!mounted) return;
+
+//     setState(() {
+//       _isLoading = true;
+//       _hasError = false;
+//       _errorMessage = '';
+//     });
+
+//     try {
+//       // Check token first
+//       final token = await storage.read(key: 'auth_token');
+//       if (token == null || token.isEmpty) {
+//         throw Exception('Please log in to view restaurants');
+//       }
+
+//       // Get location
+//       final pos = await LocationService.getCurrentLocation();
+
+//       if (pos == null) {
+//         print("⚠️ Location not available, using default coordinates");
+//         // You can either show error or use default coordinates
+//         setState(() {
+//           _hasError = true;
+//           _errorMessage = 'Location permission required to show nearby restaurants';
+//           _isLoading = false;
+//         });
+//         return;
+//       }
+
+//       print("📍 Current location: ${pos.latitude}, ${pos.longitude}");
+
+//       // Fetch nearby restaurants
+//       final response = await MapService().getNearbyRestaurants(
+//         pos.latitude,
+//         pos.longitude,
+//       );
+
+//       print("🍽 Nearby Restaurants Response => $response");
+
+//       if (!mounted) return;
+
+//       // Parse response
+//       final restaurants = response['data']?['restaurants'];
+
+//       if (restaurants == null) {
+//         throw Exception('No restaurants data in response');
+//       }
+
+//       setState(() {
+//         _nearbyRestaurants = restaurants is List ? restaurants : [];
+//         _isLoading = false;
+//         _hasError = false;
+//       });
+
+//       print("✅ Loaded ${_nearbyRestaurants.length} nearby restaurants");
+//     } catch (e) {
+//       print("❌ Error loading nearby restaurants: $e");
+
+//       if (!mounted) return;
+
+//       setState(() {
+//         _hasError = true;
+//         _errorMessage = e.toString().replaceFirst('Exception: ', '');
+//         _isLoading = false;
+//       });
+
+//       // Show error message
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text(_errorMessage),
+//           backgroundColor: Colors.red,
+//           action: SnackBarAction(
+//             label: 'Retry',
+//             textColor: Colors.white,
+//             onPressed: _loadNearbyRestaurants,
+//           ),
+//         ),
+//       );
+//     }
+//   }
+
+// //  Future<String?> fetchPresignedUrl(String fileKey) async {
+// //   try {
+// //     final response = await ApiService().get('/file/view/$fileKey', requiresAuth: true);
+// //     return response['fileUrl'] as String?;
+// //   } catch (e) {
+// //     print('Failed to fetch pre-signed URL: $e');
+// //     return null;
+// //   }
+// // }
+
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: Colors.white,
+//       appBar: AppBar(
+//         backgroundColor: Colors.white,
+//         elevation: 0,
+//         title: const Text(
+//           'Zenzio',
+//           style: TextStyle(
+//             color: Color(0xFF2D2D2D),
+//             fontSize: 18,
+//             fontWeight: FontWeight.w600,
+//           ),
+//         ),
+//         centerTitle: true,
+//         actions: [
+//           IconButton(
+//             icon: const Icon(Icons.person, color: Color(0xFFE53935)),
+//             onPressed: () {
+//               Navigator.pushNamed(context, '/profile');
+//             },
+//           ),
+//         ],
+//       ),
+//       body: Column(
+//         children: [
+//           // Search bar
+//           Padding(
+//             padding: const EdgeInsets.all(16.0),
+//             child: TextField(
+//               controller: _searchController,
+//               onChanged: (_) => setState(() {}),
+//               decoration: InputDecoration(
+//                 hintText: 'Search for restaurants',
+//                 prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
+//                 border: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(10),
+//                   borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+//                 ),
+//                 enabledBorder: OutlineInputBorder(
+//                   borderRadius: BorderRadius.circular(10),
+//                   borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+//                 ),
+//                 filled: true,
+//                 fillColor: const Color(0xFFF5F5F5),
+//               ),
+//             ),
+//           ),
+
+//           // Content
+//           Expanded(
+//             child: _isLoading
+//                 ? const Center(
+//                     child: CircularProgressIndicator(
+//                       color: Color(0xFFE53935),
+//                     ),
+//                   )
+//                 : _hasError
+//                     ? _buildErrorView()
+//                     : _nearbyRestaurants.isEmpty
+//                         ? _buildEmptyView()
+//                         : RefreshIndicator(
+//                             onRefresh: _loadNearbyRestaurants,
+//                             color: const Color(0xFFE53935),
+//                             child: ListView.builder(
+//                               padding: const EdgeInsets.symmetric(horizontal: 16),
+//                               itemCount: _nearbyRestaurants.length,
+//                               itemBuilder: (context, index) {
+//                                 final restaurant = _nearbyRestaurants[index];
+
+//                                 // Search filter
+//                                 if (_searchController.text.isNotEmpty) {
+//                                   final name = restaurant['rest_name']
+//                                       ?.toString()
+//                                       .toLowerCase() ?? '';
+//                                   final query = _searchController.text.toLowerCase();
+
+//                                   if (!name.contains(query)) {
+//                                     return const SizedBox.shrink();
+//                                   }
+//                                 }
+
+//                                 return _buildRestaurantCard(restaurant);
+//                               },
+//                             ),
+//                           ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget _buildErrorView() {
+//     return Center(
+//       child: Padding(
+//         padding: const EdgeInsets.all(24.0),
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             const Icon(
+//               Icons.error_outline,
+//               size: 64,
+//               color: Color(0xFFE53935),
+//             ),
+//             const SizedBox(height: 16),
+//             Text(
+//               _errorMessage.isEmpty ? 'Failed to load restaurants' : _errorMessage,
+//               textAlign: TextAlign.center,
+//               style: const TextStyle(
+//                 fontSize: 16,
+//                 color: Color(0xFF2D2D2D),
+//               ),
+//             ),
+//             const SizedBox(height: 24),
+//             ElevatedButton.icon(
+//               onPressed: _loadNearbyRestaurants,
+//               icon: const Icon(Icons.refresh),
+//               label: const Text('Retry'),
+//               style: ElevatedButton.styleFrom(
+//                 backgroundColor: const Color(0xFFE53935),
+//                 foregroundColor: Colors.white,
+//                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+//                 shape: RoundedRectangleBorder(
+//                   borderRadius: BorderRadius.circular(10),
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   /// Empty state view
+//   Widget _buildEmptyView() {
+//     return Center(
+//       child: Padding(
+//         padding: const EdgeInsets.all(24.0),
+//         child: Column(
+//           mainAxisAlignment: MainAxisAlignment.center,
+//           children: [
+//             Icon(
+//               Icons.restaurant,
+//               size: 64,
+//               color: Colors.grey[400],
+//             ),
+//             const SizedBox(height: 16),
+//             Text(
+//               'No restaurants found nearby',
+//               textAlign: TextAlign.center,
+//               style: TextStyle(
+//                 fontSize: 16,
+//                 color: Colors.grey[600],
+//               ),
+//             ),
+//             const SizedBox(height: 8),
+//             Text(
+//               'Try searching in a different area',
+//               textAlign: TextAlign.center,
+//               style: TextStyle(
+//                 fontSize: 14,
+//                 color: Colors.grey[500],
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+
+//   /// Restaurant card UI
+//   // In your HomeScreen _buildRestaurantCard method, update the onTap:
+
+// Widget _buildRestaurantCard(Map<String, dynamic> restaurant) {
+//   final String name = restaurant['restaurant_name'] ?? 'Unknown';
+//   final String restaurant_uid = restaurant['restaurant_uid'] ?? 'Unknown';
+//   final String address = restaurant['rest_address'] ?? '';
+//   final String avgCost = restaurant['avg_cost_two']?.toString() ?? '0';
+//   final String imagePath = restaurant['rest_logo'] ?? '';
+//   final profile = restaurant['profile'] ?? {};
+//   final List photos = profile['photo'] ?? [];
+
+//   final String imageUrl = photos.isNotEmpty ? photos.first : "";
+
+//   return GestureDetector(
+//     onTap: () {
+//       // ✅ Navigate with complete restaurant data
+//       Navigator.push(
+//         context,
+//         MaterialPageRoute(
+//           builder: (context) => RestaurantDetailScreen(
+//             restaurantData: restaurant, // Pass the entire restaurant map
+//           ),
+//         ),
+//       );
+//     },
+//     child: Container(
+//       margin: const EdgeInsets.only(bottom: 16),
+//       padding: const EdgeInsets.all(12),
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(12),
+//         border: Border.all(color: const Color(0xFFE0E0E0)),
+//         boxShadow: [
+//           BoxShadow(
+//             color: Colors.black.withOpacity(0.05),
+//             blurRadius: 10,
+//             offset: const Offset(0, 2),
+//           )
+//         ],
+//       ),
+//       child: Row(
+//         children: [
+//           // Restaurant image
+//           ClipRRect(
+//             borderRadius: BorderRadius.circular(12),
+//             child: imageUrl.isNotEmpty
+//                 ? Image.network(
+//                     imageUrl,
+//                     width: 80,
+//                     height: 80,
+//                     fit: BoxFit.cover,
+//                     errorBuilder: (context, error, stackTrace) {
+//                       return Container(
+//                         width: 80,
+//                         height: 80,
+//                         color: Colors.grey[300],
+//                         child: const Icon(
+//                           Icons.restaurant,
+//                           size: 40,
+//                           color: Colors.grey,
+//                         ),
+//                       );
+//                     },
+//                   )
+//                 : Container(
+//                     width: 80,
+//                     height: 80,
+//                     color: Colors.grey[300],
+//                     child: const Icon(
+//                       Icons.restaurant,
+//                       size: 40,
+//                       color: Colors.grey,
+//                     ),
+//                   ),
+//           ),
+//           const SizedBox(width: 12),
+
+//           // Restaurant info
+//           Expanded(
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 Text(
+//                   name,
+//                   style: const TextStyle(
+//                     fontSize: 16,
+//                     fontWeight: FontWeight.w600,
+//                     color: Color(0xFF2D2D2D),
+//                   ),
+//                   maxLines: 1,
+//                   overflow: TextOverflow.ellipsis,
+//                 ),
+//                 const SizedBox(height: 4),
+//                 if (address.isNotEmpty)
+//                   Text(
+//                     address,
+//                     style: const TextStyle(
+//                       fontSize: 13,
+//                       color: Color(0xFF9E9E9E),
+//                     ),
+//                     maxLines: 2,
+//                     overflow: TextOverflow.ellipsis,
+//                   ),
+//                 const SizedBox(height: 6),
+//                 Text(
+//                   "₹$avgCost for two",
+//                   style: const TextStyle(
+//                     color: Color(0xFFE53935),
+//                     fontWeight: FontWeight.w600,
+//                     fontSize: 14,
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+
+//           // Arrow icon
+//           const Icon(
+//             Icons.arrow_forward_ios,
+//             size: 16,
+//             color: Color(0xFF9E9E9E),
+//           ),
+//         ],
+//       ),
+//     ),
+//   );
+// }
+// }
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 import 'package:zenzio/services/location_service.dart';
 import 'package:zenzio/services/map_service.dart';
 import 'restaurant_detail_screen.dart';
-import '../../config/api_config.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -782,9 +1252,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final storage = const FlutterSecureStorage();
 
   List<dynamic> _nearbyRestaurants = [];
+  List<dynamic> _topOffers = [];
+  List<dynamic> _popularRestaurants = [];
+  List<dynamic> _newRestaurants = [];
+  
   bool _isLoading = true;
   bool _hasError = false;
   String _errorMessage = '';
+  String _currentAddress = "Fetching location...";
 
   @override
   void initState() {
@@ -794,10 +1269,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// Initialize screen and load data
   Future<void> _initializeScreen() async {
-    // Wait for frame to be rendered
     await Future.delayed(const Duration(milliseconds: 50));
     
-    // Check if user is logged in
     final token = await storage.read(key: 'auth_token');
     
     if (token == null || token.isEmpty) {
@@ -808,7 +1281,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _isLoading = false;
         });
         
-        // Show error and navigate to login
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please log in to view restaurants'),
@@ -817,7 +1289,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
         
-        // Navigate to login after delay
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
             Navigator.pushReplacementNamed(context, '/');
@@ -827,7 +1298,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     
-    // Load nearby restaurants
     await _loadNearbyRestaurants();
   }
 
@@ -848,18 +1318,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      // Check token first
       final token = await storage.read(key: 'auth_token');
       if (token == null || token.isEmpty) {
         throw Exception('Please log in to view restaurants');
       }
 
-      // Get location
       final pos = await LocationService.getCurrentLocation();
 
       if (pos == null) {
         print("⚠️ Location not available, using default coordinates");
-        // You can either show error or use default coordinates
         setState(() {
           _hasError = true;
           _errorMessage = 'Location permission required to show nearby restaurants';
@@ -869,8 +1336,17 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       print("📍 Current location: ${pos.latitude}, ${pos.longitude}");
+      
+      // Get address from coordinates using reverse geocoding
+      final address = await LocationService.getAddressFromCoordinates(
+        pos.latitude, 
+        pos.longitude
+      );
+      
+      setState(() {
+        _currentAddress = address ?? "Current Location";
+      });
 
-      // Fetch nearby restaurants
       final response = await MapService().getNearbyRestaurants(
         pos.latitude,
         pos.longitude,
@@ -880,7 +1356,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
 
-      // Parse response
       final restaurants = response['data']?['restaurants'];
 
       if (restaurants == null) {
@@ -889,6 +1364,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         _nearbyRestaurants = restaurants is List ? restaurants : [];
+        
+        // For now, distribute restaurants into categories
+        // Later you can add actual API filtering
+        _topOffers = _nearbyRestaurants.take(3).toList();
+        _popularRestaurants = _nearbyRestaurants.skip(1).take(3).toList();
+        _newRestaurants = _nearbyRestaurants.skip(2).take(3).toList();
+        
         _isLoading = false;
         _hasError = false;
       });
@@ -905,7 +1387,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
 
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_errorMessage),
@@ -920,106 +1401,408 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-//  Future<String?> fetchPresignedUrl(String fileKey) async {
-//   try {
-//     final response = await ApiService().get('/file/view/$fileKey', requiresAuth: true);
-//     return response['fileUrl'] as String?;
-//   } catch (e) {
-//     print('Failed to fetch pre-signed URL: $e');
-//     return null;
-//   }
-// }
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Zenzio',
-          style: TextStyle(
-            color: Color(0xFF2D2D2D),
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Color(0xFFE53935)),
-            onPressed: () {
-              Navigator.pushNamed(context, '/profile');
-            },
-          ),
-        ],
+      backgroundColor: Colors.grey[50],
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFE53935),
+                ),
+              )
+            : _hasError
+                ? _buildErrorView()
+                : RefreshIndicator(
+                    onRefresh: _loadNearbyRestaurants,
+                    color: const Color(0xFFE53935),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(),
+                          _buildCategoryMenu(),
+                          _buildFoodBanner(),
+                          if (_topOffers.isNotEmpty)
+                            _buildSection(
+                              title: "Top Offers",
+                              restaurants: _topOffers,
+                            ),
+                          const SizedBox(height: 8),
+                          if (_popularRestaurants.isNotEmpty)
+                            _buildSection(
+                              title: "Popular Near You",
+                              restaurants: _popularRestaurants,
+                            ),
+                          const SizedBox(height: 8),
+                          if (_newRestaurants.isNotEmpty)
+                            _buildSection(
+                              title: "New on Zenzio",
+                              restaurants: _newRestaurants,
+                            ),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+                    ),
+                  ),
       ),
-      body: Column(
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: Column(
         children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+          Row(
+            children: [
+              const Icon(Icons.location_on, color: Colors.red, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Deliver to Your Address',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          _currentAddress,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Icon(Icons.keyboard_arrow_down, size: 16),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, '/profile');
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: TextField(
               controller: _searchController,
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
-                hintText: 'Search for restaurants',
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF9E9E9E)),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-                ),
-                filled: true,
-                fillColor: const Color(0xFFF5F5F5),
+                hintText: 'Restaurants or dishes',
+                hintStyle: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[400], size: 20),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
 
-          // Content
-          Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      color: Color(0xFFE53935),
-                    ),
-                  )
-                : _hasError
-                    ? _buildErrorView()
-                    : _nearbyRestaurants.isEmpty
-                        ? _buildEmptyView()
-                        : RefreshIndicator(
-                            onRefresh: _loadNearbyRestaurants,
-                            color: const Color(0xFFE53935),
-                            child: ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: _nearbyRestaurants.length,
-                              itemBuilder: (context, index) {
-                                final restaurant = _nearbyRestaurants[index];
+  Widget _buildCategoryMenu() {
+    final categories = [
+      {'icon': Icons.delivery_dining, 'label': 'Delivery', 'active': true},
+      {'icon': Icons.play_circle_outline, 'label': 'Recipes', 'active': false},
+      {'icon': Icons.restaurant, 'label': 'Dineout', 'active': false},
+      {'icon': Icons.more_horiz, 'label': 'More', 'active': false},
+    ];
 
-                                // Search filter
-                                if (_searchController.text.isNotEmpty) {
-                                  final name = restaurant['rest_name']
-                                      ?.toString()
-                                      .toLowerCase() ?? '';
-                                  final query = _searchController.text.toLowerCase();
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: categories.map((cat) {
+          final isActive = cat['active'] as bool;
+          return Column(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isActive ? Colors.red[50] : Colors.grey[100],
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  cat['icon'] as IconData,
+                  color: isActive ? Colors.red : Colors.grey[400],
+                  size: 22,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                cat['label'] as String,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isActive ? Colors.red : Colors.grey[600],
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
 
-                                  if (!name.contains(query)) {
-                                    return const SizedBox.shrink();
-                                  }
-                                }
+  Widget _buildFoodBanner() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.all(16),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Image.network(
+          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=180&fit=crop',
+          height: 140,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              height: 140,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Icon(Icons.restaurant_menu, size: 50, color: Colors.grey),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-                                return _buildRestaurantCard(restaurant);
-                              },
-                            ),
-                          ),
+  Widget _buildSection({
+    required String title,
+    required List<dynamic> restaurants,
+  }) {
+    return Container(
+      color: Colors.white,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Text(
+                  'View All',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.red,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 250,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+              itemCount: restaurants.length,
+              itemBuilder: (context, index) {
+                return _buildRestaurantCard(restaurants[index]);
+              },
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRestaurantCard(Map<String, dynamic> restaurant) {
+    final profile = restaurant['profile'] ?? {};
+    final String name = profile['restaurant_name'] ?? restaurant['restaurant_name'] ?? 'Unknown';
+    final List photos = profile['photo'] ?? [];
+    final String imageUrl = photos.isNotEmpty ? photos.first : "";
+    final double distance = restaurant['distance']?.toDouble() ?? 0.0;
+    
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RestaurantDetailScreen(
+              restaurantData: restaurant,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 260,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.1),
+              spreadRadius: 1,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          height: 140,
+                          width: 260,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 140,
+                              width: 260,
+                              color: Colors.grey[300],
+                              child: const Icon(
+                                Icons.restaurant,
+                                size: 50,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          height: 140,
+                          width: 260,
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.restaurant,
+                            size: 50,
+                            color: Colors.grey,
+                          ),
+                        ),
+                ),
+                // Add discount/offer overlay here when available
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withOpacity(0.7),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    child: Text(
+                      '${distance.toStringAsFixed(1)} km away',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.red, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            '4.5', // Default rating, update when available
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, color: Colors.grey[600], size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            '25-30 min', // Default time, update when available
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1064,170 +1847,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  /// Empty state view
-  Widget _buildEmptyView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.restaurant,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No restaurants found nearby',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Try searching in a different area',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Restaurant card UI
-  // In your HomeScreen _buildRestaurantCard method, update the onTap:
-
-Widget _buildRestaurantCard(Map<String, dynamic> restaurant) {
-  final String name = restaurant['restaurant_name'] ?? 'Unknown';
-  final String restaurant_uid = restaurant['restaurant_uid'] ?? 'Unknown';
-  final String address = restaurant['rest_address'] ?? '';
-  final String avgCost = restaurant['avg_cost_two']?.toString() ?? '0';
-  final String imagePath = restaurant['rest_logo'] ?? '';
-  final profile = restaurant['profile'] ?? {};
-  final List photos = profile['photo'] ?? [];
-
-  final String imageUrl = photos.isNotEmpty ? photos.first : "";
-
-  return GestureDetector(
-    onTap: () {
-      // ✅ Navigate with complete restaurant data
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RestaurantDetailScreen(
-            restaurantData: restaurant, // Pass the entire restaurant map
-          ),
-        ),
-      );
-    },
-    child: Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          // Restaurant image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: imageUrl.isNotEmpty
-                ? Image.network(
-                    imageUrl,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 80,
-                        height: 80,
-                        color: Colors.grey[300],
-                        child: const Icon(
-                          Icons.restaurant,
-                          size: 40,
-                          color: Colors.grey,
-                        ),
-                      );
-                    },
-                  )
-                : Container(
-                    width: 80,
-                    height: 80,
-                    color: Colors.grey[300],
-                    child: const Icon(
-                      Icons.restaurant,
-                      size: 40,
-                      color: Colors.grey,
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 12),
-
-          // Restaurant info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF2D2D2D),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                if (address.isNotEmpty)
-                  Text(
-                    address,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                const SizedBox(height: 6),
-                Text(
-                  "₹$avgCost for two",
-                  style: const TextStyle(
-                    color: Color(0xFFE53935),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Arrow icon
-          const Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Color(0xFF9E9E9E),
-          ),
-        ],
-      ),
-    ),
-  );
-}
 }

@@ -97,27 +97,87 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
     setState(() => _isLoading = true);
 
     try {
-      print('📦 Verifying OTP for $_phone');
+      print('📦 Step 1: Verifying OTP for $_phone');
 
-      final res = await _authService.verifyOTP(
+      // ✅ STEP 1: Verify the OTP first
+      await _authService.verifyOTP(
         phone: _phone,
         countryCode: _countryCode,
         otp: otp,
       );
 
+      print('✅ OTP verified successfully');
+
+      // ✅ STEP 2: Try to login with OTP
+      print('📦 Step 2: Attempting login with OTP');
+      
+      final loginResponse = await _authService.loginWithOTP(
+        phone: _phone,
+        otp: otp,
+      );
+
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
-      print(res);
+
+      print('✅ Login successful: ${loginResponse.user ?? "User"}');
+
+      // Navigate to main screen
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/main-navigation',
         (route) => false,
       );
     } on ApiException catch (e) {
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
-      _showErrorDialog(e.message);
+
+      // ✅ Check if error is "Phone number not found" (401)
+      if (e.statusCode == 401 || 
+          e.message.toLowerCase().contains('phone number not found') ||
+          e.message.toLowerCase().contains('not found')) {
+        
+        print('⚠️ User not registered, redirecting to signup');
+        
+        // Show dialog explaining they need to sign up
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('Account Not Found'),
+            content: const Text(
+              'This phone number is not registered yet. Please sign up to create an account.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close dialog
+                  // Navigate to signup with pre-filled phone
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/signup',
+                    arguments: {
+                      'phone': _phone,
+                      'countryCode': _countryCode,
+                      'otpVerified': true, // Phone is already verified
+                    },
+                  );
+                },
+                child: const Text('Sign Up'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // Other errors (invalid OTP, etc.)
+        _showErrorDialog(e.message);
+      }
     } catch (e) {
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
-      print('❌ verifyOtp error: $e');
+      print('❌ OTP verification error: $e');
       _showErrorDialog('Unable to verify OTP. Please try again.');
     }
   }
@@ -383,7 +443,6 @@ class _OTPVerifyScreenState extends State<OTPVerifyScreen> {
     );
   }
 }
-
 // import 'package:flutter/material.dart';
 // import 'package:flutter/services.dart';
 // import 'dart:async';

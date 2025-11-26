@@ -61,7 +61,8 @@ class _CartRestScreenState extends State<CartRestScreen> {
 
         carts.add(
           RestaurantCart(
-            restaurantName: restId,
+            // restaurantName: restId,
+            restaurantName: group["restaurant_name"] ?? "Unknown Restaurant",
             description: "",
             totalItems: items.length,
             grandTotal: subtotal.toDouble(),

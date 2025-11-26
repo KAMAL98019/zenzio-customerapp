@@ -1,8 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:zenzio/screens/auth/ResetLinkSentScreen.dart';
 import 'package:zenzio/screens/auth/VerifyEmailScreen.dart';
 import 'package:zenzio/screens/home/home1_screen.dart';
+import 'package:zenzio/screens/myOrder/order_rating_screen.dart';
 import 'package:zenzio/widgets/app_back_handler.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/otp_verify_screen.dart';
@@ -98,7 +100,7 @@ class ZenzioApp extends StatelessWidget {
           '/forgot-password': (context) => const ForgotPasswordScreen(),
           '/forgot-otp': (context) => const ForgotPasswordOTPScreen(),
           '/reset-password': (context) => const ResetPasswordScreen(),
-
+           '/reset-link-sent': (context) => const ResetLinkSentScreen(),
           // Main Navigation
           '/main-navigation': (context) => const MainNavigationScreen(),
 
@@ -119,6 +121,7 @@ class ZenzioApp extends StatelessWidget {
           // '/order-tracking': (context) => const OrderTrackingScreen(),
           '/my-orders': (context) => const MyOrdersScreen(),
           '/order-details': (context) => const OrderDetailsScreen(),
+          '/order-ratings': (context) => const OrderRatingScreen(),
           '/order-tracking': (context) =>
               const OrderTrackingScreen(orderId: null),
           // Booking Flow
