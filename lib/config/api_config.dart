@@ -2,7 +2,8 @@ class ApiConfig {
   // Base URL
   // static const String baseUrl = 'https://backend.zenzio.in';
   // static const String baseUrl = 'https://erica-transthoracic-envyingly.ngrok-free.dev';
-  static const String baseUrl = 'http://72.61.172.167:3000';
+  // static const String baseUrl = 'http://72.61.172.167:3000';
+  static const String baseUrl = 'https://api.zenzio.in';
   static const String apiVersion = '/api';
   static const String apiBaseUrl = '$baseUrl$apiVersion';
 

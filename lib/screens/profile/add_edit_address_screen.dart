@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:zenzio/config/api_config.dart';
 import 'package:zenzio/services/api_service.dart';
+import 'package:zenzio/services/delivery_location_service.dart';
 
 class AddAddressScreen extends StatefulWidget {
   const AddAddressScreen({super.key});
@@ -17,19 +18,37 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   final TextEditingController _streetController = TextEditingController();
   final storage = const FlutterSecureStorage();
 
-  // GOOGLE MAP DISABLED → FUTURE USE
-  // GoogleMapController? _mapController;
-  // LatLng? pickedLocation;
-  // LatLng _initialPosition = const LatLng(12.9716, 77.5946);
-  // Set<Marker> _markers = {};
-
   bool _isLoading = false;
   bool _gettingLocation = false;
 
   double? _latitude;
   double? _longitude;
 
-  String _selectedType = "home";
+  String _selectedType = "primary";
+
+  // EDIT MODE VARIABLES
+  Map<String, dynamic>? editingData;
+  String? editingUid;
+  bool isEditing = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+
+    if (args != null && args is Map<String, dynamic>) {
+      editingData = args;
+      isEditing = true;
+      editingUid = args["delivery_uid"];
+
+      _streetController.text = args["address"] ?? "";
+      _selectedType = args["address_type"] ?? "primary";
+        // Convert String → double
+  _latitude = double.tryParse(args["lat"].toString());
+  _longitude = double.tryParse(args["lng"].toString());
+    }
+  }
 
   @override
   void initState() {
@@ -67,28 +86,22 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       _latitude = pos.latitude;
       _longitude = pos.longitude;
 
-      // 🚀 REVERSE GEOCODE FROM BACKEND
       await _reverseGeocode();
-
-      setState(() => _gettingLocation = false);
-
     } catch (e) {
-  _showToast("Failed: $e");
+      _showToast("Failed: $e");
+    }
 
-  if (!mounted) return;   // ❗ very important
-
-  setState(() => _gettingLocation = false);
-}
-
+    if (!mounted) return;
+    setState(() => _gettingLocation = false);
   }
 
-  // ---------------- REVERSE GEOCODE API ----------------
+  // ---------------- REVERSE GEOCODE ----------------
   Future<void> _reverseGeocode() async {
     if (_latitude == null || _longitude == null) return;
 
     try {
       final url = Uri.parse(
-        "${ApiConfig.baseUrl}/maps/reverse?lat=$_latitude&lng=$_longitude"
+        "${ApiConfig.baseUrl}/maps/reverse?lat=$_latitude&lng=$_longitude",
       );
 
       final res = await http.get(url);
@@ -100,7 +113,341 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     } catch (_) {}
   }
 
-  // ---------------- SAVE ADDRESS ----------------
+  // ---------------- UPDATE ADDRESS (PATCH) ----------------
+  Future<void> _updateAddress() async {
+    if (_streetController.text.trim().isEmpty) {
+      _showToast("Please enter your complete address");
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final body = {
+      "address": _streetController.text.trim(),
+      "lat": _latitude,
+      "lng": _longitude,
+      "address_type": _selectedType,
+      "is_default": editingData?["is_default"] ?? false,
+    };
+
+    try {
+      final success = await DeliveryLocationService.updateLocation(
+        editingUid!,
+        body,
+      );
+
+      if (success) {
+        _showToast("Address updated!", success: true);
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      _showToast(e.toString());
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // ---------------- SAVE ADDRESS (POST) ----------------
+  Future<void> _saveAddress() async {
+    if (_streetController.text.trim().isEmpty) {
+      _showToast("Please enter your complete address");
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final body = {
+        "address": _streetController.text.trim(),
+        "lat": _latitude,
+        "lng": _longitude,
+        "is_default": true,
+        "address_type": _selectedType,
+      };
+
+      final response = await ApiService().post(
+        ApiConfig.deliveryLocation,
+        body: body,
+        requiresAuth: true,
+      );
+
+      _showToast("Address saved!", success: true);
+
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      _showToast(e.toString());
+    } finally {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // ---------------- SNACKBAR ----------------
+  void _showToast(String msg, {bool success = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: success ? Colors.green : Colors.red,
+      ),
+    );
+  }
+
+  // ---------------- UI ----------------
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEditing ? "Edit Address" : "Add Address"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: _gettingLocation ? null : _getCurrentLocation,
+          ),
+        ],
+      ),
+
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_latitude != null)
+                    Text(
+                      "Lat: ${_latitude!.toStringAsFixed(6)}, Lng: ${_longitude!.toStringAsFixed(6)}",
+                      style: const TextStyle(fontSize: 12),
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: _streetController,
+                    decoration: const InputDecoration(
+                      labelText: "Complete Address",
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.home),
+                    ),
+                    maxLines: 3,
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    "Address Type",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+
+                  Wrap(
+                    spacing: 10,
+                    children: [
+                      ChoiceChip(
+                        label: const Text("Primary"),
+                        selected: _selectedType == "primary",
+                        onSelected: (_) =>
+                            setState(() => _selectedType = "primary"),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Home"),
+                        selected: _selectedType == "home",
+                        onSelected: (_) =>
+                            setState(() => _selectedType = "home"),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Public"),
+                        selected: _selectedType == "public",
+                        onSelected: (_) =>
+                            setState(() => _selectedType = "public"),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Office"),
+                        selected: _selectedType == "office",
+                        onSelected: (_) =>
+                            setState(() => _selectedType = "office"),
+                      ),
+                      ChoiceChip(
+                        label: const Text("Guest"),
+                        selected: _selectedType == "guest",
+                        onSelected: (_) =>
+                            setState(() => _selectedType = "guest"),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  ElevatedButton(
+                    onPressed:
+                        _isLoading ? null : (isEditing ? _updateAddress : _saveAddress),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(isEditing ? "Update Address" : "Save Address"),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _streetController.dispose();
+    super.dispose();
+  }
+}
+
+
+// import 'dart:convert';
+// import 'package:flutter/material.dart';
+// import 'package:geolocator/geolocator.dart';
+// import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:zenzio/config/api_config.dart';
+// import 'package:zenzio/services/api_service.dart';
+
+// class AddAddressScreen extends StatefulWidget {
+//   const AddAddressScreen({super.key});
+
+//   @override
+//   State<AddAddressScreen> createState() => _AddAddressScreenState();
+// }
+
+
+// class _AddAddressScreenState extends State<AddAddressScreen> {
+//   final TextEditingController _streetController = TextEditingController();
+//   final storage = const FlutterSecureStorage();
+
+//   // GOOGLE MAP DISABLED → FUTURE USE
+//   // GoogleMapController? _mapController;
+//   // LatLng? pickedLocation;
+//   // LatLng _initialPosition = const LatLng(12.9716, 77.5946);
+//   // Set<Marker> _markers = {};
+
+//   bool _isLoading = false;
+//   bool _gettingLocation = false;
+
+//   double? _latitude;
+//   double? _longitude;
+
+//   String _selectedType = "primary";
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _getCurrentLocation();
+//   }
+
+//   // ---------------- GET CURRENT LOCATION ----------------
+//   Future<void> _getCurrentLocation() async {
+//     setState(() => _gettingLocation = true);
+
+//     try {
+//       bool enabled = await Geolocator.isLocationServiceEnabled();
+//       if (!enabled) {
+//         _showToast("Enable location services");
+//         setState(() => _gettingLocation = false);
+//         return;
+//       }
+
+//       LocationPermission permission = await Geolocator.checkPermission();
+//       if (permission == LocationPermission.denied) {
+//         permission = await Geolocator.requestPermission();
+//       }
+
+//       if (permission == LocationPermission.deniedForever) {
+//         _showToast("Location permission blocked. Allow in settings.");
+//         setState(() => _gettingLocation = false);
+//         return;
+//       }
+
+//       final pos = await Geolocator.getCurrentPosition(
+//         desiredAccuracy: LocationAccuracy.high,
+//       );
+
+//       _latitude = pos.latitude;
+//       _longitude = pos.longitude;
+
+//       // 🚀 REVERSE GEOCODE FROM BACKEND
+//       await _reverseGeocode();
+
+//       setState(() => _gettingLocation = false);
+
+//     } catch (e) {
+//   _showToast("Failed: $e");
+
+//   if (!mounted) return;   // ❗ very important
+
+//   setState(() => _gettingLocation = false);
+// }
+
+//   }
+
+//   // ---------------- REVERSE GEOCODE API ----------------
+//   Future<void> _reverseGeocode() async {
+//     if (_latitude == null || _longitude == null) return;
+
+//     try {
+//       final url = Uri.parse(
+//         "${ApiConfig.baseUrl}/maps/reverse?lat=$_latitude&lng=$_longitude"
+//       );
+
+//       final res = await http.get(url);
+
+//       if (res.statusCode == 200) {
+//         final data = jsonDecode(res.body);
+//         _streetController.text = data["data"]["address"] ?? "";
+//       }
+//     } catch (_) {}
+//   }
+
+//   // ---------------- SAVE ADDRESS ----------------
+// // Future<void> _saveAddress() async {
+// //   if (_streetController.text.trim().isEmpty) {
+// //     _showToast("Please enter your complete address");
+// //     return;
+// //   }
+
+// //   if (!mounted) return;
+// //   setState(() => _isLoading = true);
+
+// //   try {
+// //     final body = {
+// //       "address": _streetController.text.trim(),
+// //       "lat": _latitude,
+// //       "lng": _longitude,
+// //       "is_default": true,
+// //       "address_type": _selectedType,
+// //     };
+
+// //     final response = await ApiService().post(
+// //       ApiConfig.deliveryLocation,
+// //       body: body,
+// //       requiresAuth: true,
+// //     );
+
+// //     print("✅ Address API Response: $response");
+
+// //     _showToast("Address saved!", success: true);
+
+// //     if (!mounted) return; 
+// //     Navigator.pop(context, response["data"]?["location"]);
+
+// //   } catch (e) {
+// //     _showToast(e.toString());
+// //   } finally {
+// //     if (!mounted) return;
+// //     setState(() => _isLoading = false);
+// //   }
+// // }
+
 // Future<void> _saveAddress() async {
 //   if (_streetController.text.trim().isEmpty) {
 //     _showToast("Please enter your complete address");
@@ -130,7 +477,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
 //     _showToast("Address saved!", success: true);
 
 //     if (!mounted) return; 
-//     Navigator.pop(context, response["data"]?["location"]);
+//     Navigator.pop(context, true);  
 
 //   } catch (e) {
 //     _showToast(e.toString());
@@ -140,175 +487,142 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
 //   }
 // }
 
-Future<void> _saveAddress() async {
-  if (_streetController.text.trim().isEmpty) {
-    _showToast("Please enter your complete address");
-    return;
-  }
+//   void _showToast(String msg, {bool success = false}) {
+//   if (!mounted) return; // 🔥 Avoid calling after dispose
 
-  if (!mounted) return;
-  setState(() => _isLoading = true);
-
-  try {
-    final body = {
-      "address": _streetController.text.trim(),
-      "lat": _latitude,
-      "lng": _longitude,
-      "is_default": true,
-      "address_type": _selectedType,
-    };
-
-    final response = await ApiService().post(
-      ApiConfig.deliveryLocation,
-      body: body,
-      requiresAuth: true,
-    );
-
-    print("✅ Address API Response: $response");
-
-    _showToast("Address saved!", success: true);
-
-    if (!mounted) return; 
-    Navigator.pop(context, true);  
-
-  } catch (e) {
-    _showToast(e.toString());
-  } finally {
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-  }
-}
-
-  void _showToast(String msg, {bool success = false}) {
-  if (!mounted) return; // 🔥 Avoid calling after dispose
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(msg),
-      backgroundColor: success ? Colors.green : Colors.red,
-    ),
-  );
-}
+//   ScaffoldMessenger.of(context).showSnackBar(
+//     SnackBar(
+//       content: Text(msg),
+//       backgroundColor: success ? Colors.green : Colors.red,
+//     ),
+//   );
+// }
 
 
-  // ---------------- UI ----------------
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Add Address"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.my_location),
-            onPressed: _gettingLocation ? null : _getCurrentLocation,
-          ),
-        ],
-      ),
+//   // ---------------- UI ----------------
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(
+//         title: const Text("Add Address"),
+//         actions: [
+//           IconButton(
+//             icon: const Icon(Icons.my_location),
+//             onPressed: _gettingLocation ? null : _getCurrentLocation,
+//           ),
+//         ],
+//       ),
 
-      body: Column(
-        children: [
-          // ---------------- GOOGLE MAP (DISABLED) ----------------
-          /*
-          SizedBox(
-  height: 150,
-  child: Container(
-    alignment: Alignment.center,
-    color: Colors.grey.shade200,
-    child: const Text(
-      "Map disabled (API key not added)",
-      style: TextStyle(fontSize: 14, color: Colors.black54),
-    ),
-  ),
-),
+//       body: Column(
+//         children: [
+//           // ---------------- GOOGLE MAP (DISABLED) ----------------
+//           /*
+//           SizedBox(
+//   height: 150,
+//   child: Container(
+//     alignment: Alignment.center,
+//     color: Colors.grey.shade200,
+//     child: const Text(
+//       "Map disabled (API key not added)",
+//       style: TextStyle(fontSize: 14, color: Colors.black54),
+//     ),
+//   ),
+// ),
 
-          */
+//           */
 
-          // ---------------- LOWER FORM ----------------
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+//           // ---------------- LOWER FORM ----------------
+//           Expanded(
+//             child: SingleChildScrollView(
+//               padding: const EdgeInsets.all(16),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.stretch,
+//                 children: [
                   
-                  if (_latitude != null)
-                    Text(
-                      "Lat: ${_latitude!.toStringAsFixed(6)}, Lng: ${_longitude!.toStringAsFixed(6)}",
-                      style: const TextStyle(fontSize: 12),
-                    ),
+//                   if (_latitude != null)
+//                     Text(
+//                       "Lat: ${_latitude!.toStringAsFixed(6)}, Lng: ${_longitude!.toStringAsFixed(6)}",
+//                       style: const TextStyle(fontSize: 12),
+//                     ),
 
-                  const SizedBox(height: 16),
+//                   const SizedBox(height: 16),
 
-                  TextField(
-                    controller: _streetController,
-                    decoration: const InputDecoration(
-                      labelText: "Complete Address",
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.home),
-                    ),
-                    maxLines: 3,
-                  ),
+//                   TextField(
+//                     controller: _streetController,
+//                     decoration: const InputDecoration(
+//                       labelText: "Complete Address",
+//                       border: OutlineInputBorder(),
+//                       prefixIcon: Icon(Icons.home),
+//                     ),
+//                     maxLines: 3,
+//                   ),
 
-                  const SizedBox(height: 20),
+//                   const SizedBox(height: 20),
 
-                  const Text("Address Type",
-                      style:
-                          TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+//                   const Text("Address Type",
+//                       style:
+//                           TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
 
-                  Wrap(
-                    spacing: 10,
-                    children: [
-                       ChoiceChip(
-                        label: const Text("primary"),
-                        selected: _selectedType == "primary",
-                        onSelected: (_) => setState(() =>
-                            _selectedType = "primary"),
-                      ),
-                      ChoiceChip(
-                        label: const Text("Home"),
-                        selected: _selectedType == "home",
-                        onSelected: (_) => setState(() => _selectedType = "home"),
-                      ),
-                      ChoiceChip(
-                        label: const Text("Work"),
-                        selected: _selectedType == "work",
-                        onSelected: (_) => setState(() =>
-                            _selectedType = "work"),
-                      ),
+//                   Wrap(
+//                     spacing: 10,
+//                     children: [
+//                        ChoiceChip(
+//                         label: const Text("Primary"),
+//                         selected: _selectedType == "primary",
+//                         onSelected: (_) => setState(() =>
+//                             _selectedType = "primary"),
+//                       ),
+//                       ChoiceChip(
+//                         label: const Text("Home"),
+//                         selected: _selectedType == "home",
+//                         onSelected: (_) => setState(() => _selectedType = "home"),
+//                       ),
+//                       ChoiceChip(
+//                         label: const Text("Public"),
+//                         selected: _selectedType == "public",
+//                         onSelected: (_) => setState(() =>
+//                             _selectedType = "public"),
+//                       ),
                      
-                      ChoiceChip(
-                        label: const Text("office"),
-                        selected: _selectedType == "office",
-                        onSelected: (_) =>
-                            setState(() => _selectedType = "office"),
-                      ),
-                    ],
-                  ),
+//                       ChoiceChip(
+//                         label: const Text("Office"),
+//                         selected: _selectedType == "office",
+//                         onSelected: (_) =>
+//                             setState(() => _selectedType = "office"),
+//                       ),
+//                       ChoiceChip(
+//                         label: const Text("Guest"),
+//                         selected: _selectedType == "guest",
+//                         onSelected: (_) =>
+//                             setState(() => _selectedType = "guest"),
+//                       ),
+//                     ],
+//                   ),
 
-                  const SizedBox(height: 30),
+//                   const SizedBox(height: 30),
 
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _saveAddress,
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Save Address"),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+//                   ElevatedButton(
+//                     onPressed: _isLoading ? null : _saveAddress,
+//                     child: _isLoading
+//                         ? const CircularProgressIndicator(color: Colors.white)
+//                         : const Text("Save Address"),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
 
-  @override
-  void dispose() {
-    _streetController.dispose();
-    // _mapController?.dispose();  // FUTURE USE
-    super.dispose();
-  }
-}
+//   @override
+//   void dispose() {
+//     _streetController.dispose();
+//     // _mapController?.dispose();  // FUTURE USE
+//     super.dispose();
+//   }
+// }
 
 // import 'dart:convert';
 // import 'package:flutter/material.dart';

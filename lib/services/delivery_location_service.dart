@@ -36,6 +36,29 @@ class DeliveryLocationService {
     }
   }
 
+
+  //  Edit location by ID
+static Future<bool> updateLocation(String deliveryUid, Map<String, dynamic> body) async {
+  try {
+    final url = "${ApiConfig.deliveryLocation}/$deliveryUid";
+
+    final response = await ApiService().patch(
+      url,
+      body: body,
+      requiresAuth: true,
+    );
+
+    if (response["status"] == "success" || response["code"] == 200) {
+      return true;
+    } else {
+      throw Exception(response["message"] ?? "Failed to update location");
+    }
+  } catch (e) {
+    throw Exception("Update failed: $e");
+  }
+}
+
+
   //  Delete location by ID
   static Future<bool> deleteLocation(String deliveryUid) async {
     try {
