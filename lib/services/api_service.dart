@@ -1,362 +1,362 @@
-import 'dart:convert';
-import 'dart:io';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
-import '../config/api_config.dart';
+  import 'dart:convert';
+  import 'dart:io';
+  import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+  import 'package:http/http.dart' as http;
+  import '../config/api_config.dart';
 
-class ApiException implements Exception {
-  final String message;
-  final int? statusCode;
-  final dynamic errors;
+  class ApiException implements Exception {
+    final String message;
+    final int? statusCode;
+    final dynamic errors;
 
-  ApiException(this.message, {this.statusCode, this.errors}); 
+    ApiException(this.message, {this.statusCode, this.errors}); 
 
-  @override
-  String toString() => message;
-}
-
-class ApiService {
-  static final ApiService _instance = ApiService._internal();
-  factory ApiService() => _instance;
-  ApiService._internal();
-
-  final _storage = const FlutterSecureStorage();
-
-  // ✅ Platform detector INSIDE ApiService
-  static String getPlatform() {
-    if (Platform.isAndroid) return "android";
-    if (Platform.isIOS) return "ios";
-    return "unknown";
+    @override
+    String toString() => message;
   }
 
-  // Default headers
-  static const Map<String, String> defaultHeaders = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+  class ApiService {
+    static final ApiService _instance = ApiService._internal();
+    factory ApiService() => _instance;
+    ApiService._internal();
 
-  // Get headers with optional auth token
-  Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
-    final headers = {...defaultHeaders};
-    if (requiresAuth) {
-      final token = await _storage.read(key: 'auth_token');
-      if (token?.isNotEmpty == true) headers['Authorization'] = 'Bearer $token';
+    final _storage = const FlutterSecureStorage();
+
+    // ✅ Platform detector INSIDE ApiService
+    static String getPlatform() {
+      if (Platform.isAndroid) return "android";
+      if (Platform.isIOS) return "ios";
+      return "unknown";
     }
-    headers['platform'] = getPlatform();
-    headers['User-Agent'] = getPlatform();
-    headers['mode'] = 'development';
-    headers['clientId'] = ApiConfig.clientId;
-    headers['x-client-app'] = 'customer';
-    return headers;
-  }
 
-  // Handle API responses
-  // Future<dynamic> _handleResponse(http.Response response) async {
-  //   final statusCode = response.statusCode;
-  //   try {
-  //     if (response.body.isEmpty) {
-  //       if (statusCode >= 200 && statusCode < 300) return {'success': true};
-  //     }
+    // Default headers
+    static const Map<String, String> defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
 
-  //     final body = json.decode(response.body);
+    // Get headers with optional auth token
+    Future<Map<String, String>> _getHeaders({bool requiresAuth = false}) async {
+      final headers = {...defaultHeaders};
+      if (requiresAuth) {
+        final token = await _storage.read(key: 'auth_token');
+        if (token?.isNotEmpty == true) headers['Authorization'] = 'Bearer $token';
+      }
+      headers['platform'] = getPlatform();
+      headers['User-Agent'] = getPlatform();
+      headers['mode'] = 'development';
+      headers['clientId'] = ApiConfig.clientId;
+      headers['x-client-app'] = 'customer';
+      return headers;
+    }
 
-  //     if (statusCode >= 200 && statusCode < 300) return body;
+    // Handle API responses
+    // Future<dynamic> _handleResponse(http.Response response) async {
+    //   final statusCode = response.statusCode;
+    //   try {
+    //     if (response.body.isEmpty) {
+    //       if (statusCode >= 200 && statusCode < 300) return {'success': true};
+    //     }
 
-  //     if (statusCode == 401) {
-  //       await _storage.delete(key: 'auth_token');
-  //       throw ApiException('Session expired. Please log in again.', statusCode: 401);
-  //     }
+    //     final body = json.decode(response.body);
 
-  //     final errorMessage = body['message'] ??
-  //         body['error'] ??
-  //         body['detail'] ??
-  //         'An error occurred';
+    //     if (statusCode >= 200 && statusCode < 300) return body;
 
-  //     throw ApiException(errorMessage,
-  //         statusCode: statusCode, errors: body['errors'] ?? body['data']);
-  //   } catch (e) {
-  //     if (e is ApiException) rethrow;
-  //     throw ApiException('Failed to process response: $e',
-  //         statusCode: statusCode);
-  //   }
-  // }
+    //     if (statusCode == 401) {
+    //       await _storage.delete(key: 'auth_token');
+    //       throw ApiException('Session expired. Please log in again.', statusCode: 401);
+    //     }
 
-  // Handle API responses - Replace your existing _handleResponse method
-  Future<dynamic> _handleResponse(http.Response response) async {
-    final statusCode = response.statusCode;
+    //     final errorMessage = body['message'] ??
+    //         body['error'] ??
+    //         body['detail'] ??
+    //         'An error occurred';
 
-    print('📊 Response Status Code: $statusCode');
-    print('📊 Response Body: ${response.body}');
+    //     throw ApiException(errorMessage,
+    //         statusCode: statusCode, errors: body['errors'] ?? body['data']);
+    //   } catch (e) {
+    //     if (e is ApiException) rethrow;
+    //     throw ApiException('Failed to process response: $e',
+    //         statusCode: statusCode);
+    //   }
+    // }
 
-    try {
-      if (response.body.isEmpty) {
-        if (statusCode >= 200 && statusCode < 300) return {'success': true};
+    // Handle API responses - Replace your existing _handleResponse method
+    Future<dynamic> _handleResponse(http.Response response) async {
+      final statusCode = response.statusCode;
+
+      print('📊 Response Status Code: $statusCode');
+      print('📊 Response Body: ${response.body}');
+
+      try {
+        if (response.body.isEmpty) {
+          if (statusCode >= 200 && statusCode < 300) return {'success': true};
+          throw ApiException(
+            'Empty response with status $statusCode',
+            statusCode: statusCode,
+          );
+        }
+
+        final body = json.decode(response.body);
+        print('📊 Parsed Response: $body');
+
+        if (statusCode >= 200 && statusCode < 300) return body;
+
+        if (statusCode == 401) {
+          await _storage.delete(key: 'auth_token');
+          throw ApiException(
+            'Session expired. Please log in again.',
+            statusCode: 401,
+          );
+        }
+
+        // ✅ Enhanced error message extraction
+        String errorMessage = 'An error occurred';
+        dynamic errorDetails;
+
+        // Try multiple fields where error messages might be
+        if (body['message'] != null) {
+          errorMessage = body['message'].toString();
+        } else if (body['error'] != null) {
+          errorMessage = body['error'].toString();
+        } else if (body['detail'] != null) {
+          errorMessage = body['detail'].toString();
+        }
+
+        // Check for details field
+        if (body['details'] != null) {
+          errorDetails = body['details'];
+          if (errorDetails is List && errorDetails.isNotEmpty) {
+            errorMessage = errorDetails.join(', ');
+          } else if (errorDetails is String) {
+            errorMessage = errorDetails;
+          }
+        }
+
+        // Check for validation errors
+        if (body['errors'] != null) {
+          errorDetails = body['errors'];
+          if (errorDetails is Map) {
+            final errorList = errorDetails.values.toList();
+            errorMessage = errorList.join(', ');
+          } else if (errorDetails is List) {
+            errorMessage = errorDetails.join(', ');
+          }
+        }
+
+        // Check for data field with nested errors
+        if (body['data'] != null && body['data'] is Map) {
+          final data = body['data'] as Map;
+          if (data['message'] != null) {
+            errorMessage = data['message'].toString();
+          }
+        }
+
+        print('❌ Error extracted: $errorMessage');
+        print('❌ Error details: $errorDetails');
+
         throw ApiException(
-          'Empty response with status $statusCode',
+          errorMessage,
+          statusCode: statusCode,
+          errors: errorDetails ?? body['errors'] ?? body['data'],
+        );
+      } catch (e) {
+        if (e is ApiException) rethrow;
+
+        print('❌ Failed to parse response: $e');
+        throw ApiException(
+          'Failed to process response: ${response.body}',
           statusCode: statusCode,
         );
       }
+    }
 
-      final body = json.decode(response.body);
-      print('📊 Parsed Response: $body');
+    // GET
+    Future<dynamic> get(String endpoint, {bool requiresAuth = false}) async {
+      try {
+        final headers = await _getHeaders(requiresAuth: requiresAuth);
+        headers.addAll({
+          'platform': ApiService.getPlatform(),
+          'User-Agent': ApiService.getPlatform(),
+          'mode': 'development',
+          'clientId': ApiConfig.clientId,
+        });
+        final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+        final response = await http
+            .get(uri, headers: headers)
+            .timeout(ApiConfig.connectTimeout);
+        return _handleResponse(response);
+      } catch (e) {
+        throw ApiException('GET request failed: $e');
+      }
+    }
 
-      if (statusCode >= 200 && statusCode < 300) return body;
+    // POST
+    // Future<dynamic> post(String endpoint,
+    //     {required Map<String, dynamic> body, bool requiresAuth = false}) async {
+    //   try {
+    //     final headers = await _getHeaders(requiresAuth: requiresAuth);
 
-      if (statusCode == 401) {
-        await _storage.delete(key: 'auth_token');
+    //     headers.addAll({
+    //       'platform': ApiService.getPlatform(),
+    //       'User-Agent': ApiService.getPlatform(),
+    //       'mode': 'development',
+    //       'clientId': ApiConfig.clientId,
+    //     });
+
+    //     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+    //     final response = await http
+    //         .post(uri, headers: headers, body: jsonEncode(body))
+    //         .timeout(ApiConfig.connectTimeout);
+
+    //     return _handleResponse(response);
+    //   } catch (e) {
+    //     throw ApiException('POST request failed: $e');
+    //   }
+    // }
+    // POST - Replace your existing POST method in ApiService with this debug version
+    Future<dynamic> post(
+      String endpoint, {
+      required Map<String, dynamic> body,
+      bool requiresAuth = false,
+    }) async {
+      try {
+        final headers = await _getHeaders(requiresAuth: requiresAuth);
+
+        headers.addAll({
+          'platform': ApiService.getPlatform(),
+          'User-Agent': ApiService.getPlatform(),
+          'mode': 'development',
+          'clientId': ApiConfig.clientId,
+        });
+
+        final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+
+        // ✅ CRITICAL DEBUG LOGS
+        print('🌐 POST Request Details:');
+        print('   URL: $uri');
+        print('   Headers: $headers');
+        print('   Body: ${jsonEncode(body)}');
+        print('   Body Keys: ${body.keys.toList()}');
+
+        final response = await http
+            .post(uri, headers: headers, body: jsonEncode(body))
+            .timeout(ApiConfig.connectTimeout);
+
+        print('📥 Response Status: ${response.statusCode}');
+        print('📥 Response Body: ${response.body}');
+
+        return _handleResponse(response);
+      } catch (e) {
+        print('❌ POST request exception: $e');
+        throw ApiException('POST request failed: $e');
+      }
+    }
+
+    // PUT
+    Future<dynamic> put(
+      String endpoint, {
+      required Map<String, dynamic> body,
+      bool requiresAuth = false,
+    }) async {
+      try {
+        final headers = await _getHeaders(requiresAuth: requiresAuth);
+        final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+        final response = await http
+            .put(uri, headers: headers, body: jsonEncode(body))
+            .timeout(ApiConfig.connectTimeout);
+        return _handleResponse(response);
+      } catch (e) {
+        throw ApiException('PUT request failed: $e');
+      }
+    }
+
+    // PATCH
+    Future<dynamic> patch(
+      String endpoint, {
+      required Map<String, dynamic> body,
+      bool requiresAuth = false,
+    }) async {
+      try {
+        final headers = await _getHeaders(requiresAuth: requiresAuth);
+        final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+        final response = await http
+            .patch(uri, headers: headers, body: jsonEncode(body))
+            .timeout(ApiConfig.connectTimeout);
+        return _handleResponse(response);
+      } catch (e) {
+        throw ApiException('PATCH request failed: $e');
+      }
+    }
+
+    // DELETE
+    Future<dynamic> delete(
+      String endpoint, {
+      Map<String, dynamic>? body,
+      bool requiresAuth = false,
+    }) async {
+      try {
+        final headers = await _getHeaders(requiresAuth: requiresAuth);
+        headers.addAll({
+          'platform': ApiService.getPlatform(),
+          'User-Agent': ApiService.getPlatform(),
+          'mode': 'development',
+          'clientId': ApiConfig.clientId,
+        });
+        final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+
+        // http.delete supports a body param (string) — encode if provided
+        final response = await http
+            .delete(
+              uri,
+              headers: headers,
+              body: body != null ? jsonEncode(body) : null,
+            )
+            .timeout(ApiConfig.connectTimeout);
+
+        return _handleResponse(response);
+      } catch (e) {
+        throw ApiException('DELETE request failed: $e');
+      }
+    }
+
+    // Multipart
+    Future<dynamic> multipartRequest(
+      String endpoint, {
+      required String method,
+      required Map<String, String> fields,
+      required Map<String, File> files,
+      bool requiresAuth = false,
+    }) async {
+      try {
+        final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
+        final request = http.MultipartRequest(method, uri);
+        request.headers.addAll(await _getHeaders(requiresAuth: requiresAuth));
+
+        fields.forEach((key, value) => request.fields[key] = value);
+
+        for (final entry in files.entries) {
+          request.files.add(
+            await http.MultipartFile.fromPath(entry.key, entry.value.path),
+          );
+        }
+
+        final response = await request.send();
+        final responseBody = await response.stream.bytesToString();
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return jsonDecode(responseBody);
+        }
+
         throw ApiException(
-          'Session expired. Please log in again.',
-          statusCode: 401,
+          'Upload failed: ${response.statusCode}',
+          statusCode: response.statusCode,
         );
+      } catch (e) {
+        throw ApiException('Multipart request failed: $e');
       }
-
-      // ✅ Enhanced error message extraction
-      String errorMessage = 'An error occurred';
-      dynamic errorDetails;
-
-      // Try multiple fields where error messages might be
-      if (body['message'] != null) {
-        errorMessage = body['message'].toString();
-      } else if (body['error'] != null) {
-        errorMessage = body['error'].toString();
-      } else if (body['detail'] != null) {
-        errorMessage = body['detail'].toString();
-      }
-
-      // Check for details field
-      if (body['details'] != null) {
-        errorDetails = body['details'];
-        if (errorDetails is List && errorDetails.isNotEmpty) {
-          errorMessage = errorDetails.join(', ');
-        } else if (errorDetails is String) {
-          errorMessage = errorDetails;
-        }
-      }
-
-      // Check for validation errors
-      if (body['errors'] != null) {
-        errorDetails = body['errors'];
-        if (errorDetails is Map) {
-          final errorList = errorDetails.values.toList();
-          errorMessage = errorList.join(', ');
-        } else if (errorDetails is List) {
-          errorMessage = errorDetails.join(', ');
-        }
-      }
-
-      // Check for data field with nested errors
-      if (body['data'] != null && body['data'] is Map) {
-        final data = body['data'] as Map;
-        if (data['message'] != null) {
-          errorMessage = data['message'].toString();
-        }
-      }
-
-      print('❌ Error extracted: $errorMessage');
-      print('❌ Error details: $errorDetails');
-
-      throw ApiException(
-        errorMessage,
-        statusCode: statusCode,
-        errors: errorDetails ?? body['errors'] ?? body['data'],
-      );
-    } catch (e) {
-      if (e is ApiException) rethrow;
-
-      print('❌ Failed to parse response: $e');
-      throw ApiException(
-        'Failed to process response: ${response.body}',
-        statusCode: statusCode,
-      );
     }
   }
-
-  // GET
-  Future<dynamic> get(String endpoint, {bool requiresAuth = false}) async {
-    try {
-      final headers = await _getHeaders(requiresAuth: requiresAuth);
-      headers.addAll({
-        'platform': ApiService.getPlatform(),
-        'User-Agent': ApiService.getPlatform(),
-        'mode': 'development',
-        'clientId': ApiConfig.clientId,
-      });
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final response = await http
-          .get(uri, headers: headers)
-          .timeout(ApiConfig.connectTimeout);
-      return _handleResponse(response);
-    } catch (e) {
-      throw ApiException('GET request failed: $e');
-    }
-  }
-
-  // POST
-  // Future<dynamic> post(String endpoint,
-  //     {required Map<String, dynamic> body, bool requiresAuth = false}) async {
-  //   try {
-  //     final headers = await _getHeaders(requiresAuth: requiresAuth);
-
-  //     headers.addAll({
-  //       'platform': ApiService.getPlatform(),
-  //       'User-Agent': ApiService.getPlatform(),
-  //       'mode': 'development',
-  //       'clientId': ApiConfig.clientId,
-  //     });
-
-  //     final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-  //     final response = await http
-  //         .post(uri, headers: headers, body: jsonEncode(body))
-  //         .timeout(ApiConfig.connectTimeout);
-
-  //     return _handleResponse(response);
-  //   } catch (e) {
-  //     throw ApiException('POST request failed: $e');
-  //   }
-  // }
-  // POST - Replace your existing POST method in ApiService with this debug version
-  Future<dynamic> post(
-    String endpoint, {
-    required Map<String, dynamic> body,
-    bool requiresAuth = false,
-  }) async {
-    try {
-      final headers = await _getHeaders(requiresAuth: requiresAuth);
-
-      headers.addAll({
-        'platform': ApiService.getPlatform(),
-        'User-Agent': ApiService.getPlatform(),
-        'mode': 'development',
-        'clientId': ApiConfig.clientId,
-      });
-
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-
-      // ✅ CRITICAL DEBUG LOGS
-      print('🌐 POST Request Details:');
-      print('   URL: $uri');
-      print('   Headers: $headers');
-      print('   Body: ${jsonEncode(body)}');
-      print('   Body Keys: ${body.keys.toList()}');
-
-      final response = await http
-          .post(uri, headers: headers, body: jsonEncode(body))
-          .timeout(ApiConfig.connectTimeout);
-
-      print('📥 Response Status: ${response.statusCode}');
-      print('📥 Response Body: ${response.body}');
-
-      return _handleResponse(response);
-    } catch (e) {
-      print('❌ POST request exception: $e');
-      throw ApiException('POST request failed: $e');
-    }
-  }
-
-  // PUT
-  Future<dynamic> put(
-    String endpoint, {
-    required Map<String, dynamic> body,
-    bool requiresAuth = false,
-  }) async {
-    try {
-      final headers = await _getHeaders(requiresAuth: requiresAuth);
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final response = await http
-          .put(uri, headers: headers, body: jsonEncode(body))
-          .timeout(ApiConfig.connectTimeout);
-      return _handleResponse(response);
-    } catch (e) {
-      throw ApiException('PUT request failed: $e');
-    }
-  }
-
-  // PATCH
-  Future<dynamic> patch(
-    String endpoint, {
-    required Map<String, dynamic> body,
-    bool requiresAuth = false,
-  }) async {
-    try {
-      final headers = await _getHeaders(requiresAuth: requiresAuth);
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final response = await http
-          .patch(uri, headers: headers, body: jsonEncode(body))
-          .timeout(ApiConfig.connectTimeout);
-      return _handleResponse(response);
-    } catch (e) {
-      throw ApiException('PATCH request failed: $e');
-    }
-  }
-
-  // DELETE
-  Future<dynamic> delete(
-    String endpoint, {
-    Map<String, dynamic>? body,
-    bool requiresAuth = false,
-  }) async {
-    try {
-      final headers = await _getHeaders(requiresAuth: requiresAuth);
-      headers.addAll({
-        'platform': ApiService.getPlatform(),
-        'User-Agent': ApiService.getPlatform(),
-        'mode': 'development',
-        'clientId': ApiConfig.clientId,
-      });
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-
-      // http.delete supports a body param (string) — encode if provided
-      final response = await http
-          .delete(
-            uri,
-            headers: headers,
-            body: body != null ? jsonEncode(body) : null,
-          )
-          .timeout(ApiConfig.connectTimeout);
-
-      return _handleResponse(response);
-    } catch (e) {
-      throw ApiException('DELETE request failed: $e');
-    }
-  }
-
-  // Multipart
-  Future<dynamic> multipartRequest(
-    String endpoint, {
-    required String method,
-    required Map<String, String> fields,
-    required Map<String, File> files,
-    bool requiresAuth = false,
-  }) async {
-    try {
-      final uri = Uri.parse('${ApiConfig.baseUrl}$endpoint');
-      final request = http.MultipartRequest(method, uri);
-      request.headers.addAll(await _getHeaders(requiresAuth: requiresAuth));
-
-      fields.forEach((key, value) => request.fields[key] = value);
-
-      for (final entry in files.entries) {
-        request.files.add(
-          await http.MultipartFile.fromPath(entry.key, entry.value.path),
-        );
-      }
-
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        return jsonDecode(responseBody);
-      }
-
-      throw ApiException(
-        'Upload failed: ${response.statusCode}',
-        statusCode: response.statusCode,
-      );
-    } catch (e) {
-      throw ApiException('Multipart request failed: $e');
-    }
-  }
-}
 
 
 // import 'dart:convert';

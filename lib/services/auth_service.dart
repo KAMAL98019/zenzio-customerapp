@@ -195,102 +195,6 @@ class AuthService {
     return userJson;
   }
 
-  // // ==================== REGISTER ====================
-  // Future<RegisterResponse> register({
-  //   required String email,
-  //   required String password,
-  //   required String name,
-  //   required String lastName,
-  //   String? phone,
-  //   required String countryCode,
-  //   String? dateOfBirth,
-  //   String? gender,
-  // }) async {
-  //   try {
-  //     final nameParts = name.trim().split(' ');
-  //     final firstName = nameParts.first;
-
-  //     final body = {
-  //       'firstName': firstName,
-  //       'lastName': lastName,
-  //       'photo': '',
-  //       'age': '',
-  //       'email': email,
-  //       'phoneNumber': phone ?? '',
-  //       'password': password,
-  //       'bank_details': {
-  //         'bank_name': '',
-  //         'ifsc_code': '',
-  //         'account_number': '',
-  //         'account_type': '',
-  //       },
-  //       'address': {
-  //         'city': '',
-  //         'state': '',
-  //         'pincode': '',
-  //         'address': '',
-  //         'address_secondary': '',
-  //       },
-  //     };
-
-  //     print('📤 Sending registration request');
-
-  //     final response = await _apiService.post(
-  //       ApiConfig.signupEndpoint,
-  //       body: body,
-  //       requiresAuth: false,
-  //     );
-
-  //     print('📥 Registration Response: $response');
-
-  //     // Extract user data using unified method
-  //     final userJson = _extractUserData(response);
-  //     _currentUser = User.fromJson(userJson);
-
-  //     // Extract and save tokens
-  //     final token = response['accessToken'] ??
-  //         response['token'] ??
-  //         response['data']?['token'];
-
-  //     final refreshToken = response['refreshToken'] ??
-  //         response['refresh_token'] ??
-  //         response['data']?['refreshToken'];
-
-  //     if (token != null && token.toString().isNotEmpty) {
-  //       await storage.write(key: 'auth_token', value: token.toString());
-  //       print('🔐 Access token saved');
-  //     }
-
-  //     if (refreshToken != null && refreshToken.toString().isNotEmpty) {
-  //       await storage.write(key: 'refresh_token', value: refreshToken.toString());
-  //       print('🔐 Refresh token saved');
-  //     }
-
-  //     // Save user data
-  //     await storage.write(
-  //       key: 'user_data',
-  //       value: jsonEncode(_currentUser!.toJson()),
-  //     );
-
-  //     if (_currentUser!.id != null) {
-  //       await storage.write(key: 'user_id', value: _currentUser!.id.toString());
-  //     }
-
-  //     // Send verification email
-  //     await sendEmailVerification(email);
-
-  //     print('✅ Registration successful: ${_currentUser!.name}');
-
-  //     return RegisterResponse(
-  //       user: _currentUser!,
-  //       message: 'Registration successful',
-  //     );
-  //   } catch (e) {
-  //     print('❌ Registration error: $e');
-  //     rethrow;
-  //   }
-  // }
-
   // ==================== REGISTER ====================
   Future<RegisterResponse> register({
     required String email,
@@ -452,26 +356,26 @@ class AuthService {
     }
   }
 
-  // // ==================== SEND EMAIL VERIFICATION ====================
-  // // This is automatically called after registration
+  // ==================== SEND EMAIL VERIFICATION ====================
   // Future<void> sendEmailVerification(String email) async {
   //   try {
   //     final response = await _apiService.post(
   //       ApiConfig.firebaseSendVerificationEndpoint,
   //       body: {
   //         "email": email,
-  //         "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action"
+  //         "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action",
   //       },
-  //       requiresAuth: true, // User must be authenticated to send verification
+  //       requiresAuth: true,
   //     );
 
   //     print('📩 Verification response: $response');
 
-  //     if (response['statusCode'] == 200 ||
+  //     // ✅ FIXED: Check for the correct response format
+  //     // Backend returns: {"message":"Verification link generated successfully","link":"..."}
+  //     if (response['message']?.toString().contains('successfully') == true ||
+  //         response['statusCode'] == 200 ||
   //         response['statusCode'] == 201 ||
-  //         response['status'] == 200 ||
-  //         response['status'] == 201 ||
-  //         response['success'] == true) {
+  //         response['link'] != null) {
   //       print('📩 Verification email sent successfully to $email');
   //     } else {
   //       print('⚠️ Failed to send verification: ${response['message']}');
@@ -483,34 +387,53 @@ class AuthService {
   //   }
   // }
 
-  // ==================== SEND EMAIL VERIFICATION ====================
-  Future<void> sendEmailVerification(String email) async {
+  Future<bool> sendEmailVerification(String email) async {
     try {
+      print('📧 Sending verification email to: $email');
+
+      // Check if token exists before making authenticated call
+      final token = await storage.read(key: 'auth_token');
+      if (token == null || token.isEmpty) {
+        print('⚠️ No auth token found - cannot send verification email');
+        return false;
+      }
+
       final response = await _apiService.post(
         ApiConfig.firebaseSendVerificationEndpoint,
         body: {
           "email": email,
-          "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action",
+          // "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action",
+          "redirectUrl": "https://zenzio.in",
         },
         requiresAuth: true,
       );
 
-      print('📩 Verification response: $response');
+      print('📩 Verification API Response: $response');
+      print('📩 Response keys: ${response.keys.toList()}');
 
-      // ✅ FIXED: Check for the correct response format
-      // Backend returns: {"message":"Verification link generated successfully","link":"..."}
-      if (response['message']?.toString().contains('successfully') == true ||
-          response['statusCode'] == 200 ||
-          response['statusCode'] == 201 ||
-          response['link'] != null) {
-        print('📩 Verification email sent successfully to $email');
+      // ✅ Check multiple success indicators
+      final statusCode = response['statusCode'] ?? response['status'];
+      final message = response['message']?.toString().toLowerCase() ?? '';
+      final link = response['link'];
+
+      if (statusCode == 200 ||
+          statusCode == 201 ||
+          message.contains('success') ||
+          link != null) {
+        print('✅ Verification email sent successfully');
+        return true;
       } else {
-        print('⚠️ Failed to send verification: ${response['message']}');
-        // Don't throw - verification email failure shouldn't block registration
+        print('⚠️ Unexpected verification response: $response');
+        return false;
       }
     } catch (e) {
       print('❌ Error sending verification email: $e');
-      // Don't throw - verification email is not critical for registration completion
+      print('❌ Error type: ${e.runtimeType}');
+      if (e is ApiException) {
+        print('❌ Status Code: ${e.statusCode}');
+        print('❌ Message: ${e.message}');
+      }
+      return false;
     }
   }
 
@@ -560,403 +483,576 @@ class AuthService {
       return false;
     }
   }
-  // ==================== SEND EMAIL VERIFICATION ====================
-  // Future<void> sendEmailVerification(String email) async {
-  //   try {
-  //     final response = await _apiService.post(
-  //       ApiConfig.firebaseSendVerificationEndpoint,
-  //       body: {
-  //         "email": email,
-  //         "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action"
-  //       },
-  //       requiresAuth: false, // ❗ FIXED (should NOT require auth)
-  //     );
-
-  //     print('📩 Verification response: $response');
-
-  //     if (response['status'] == 200 || response['status'] == 201 || response['success'] == true) {
-  //       print('📩 Verification email sent successfully');
-  //     } else {
-  //       print('⚠️ Failed to send verification: ${response['message']}');
-  //     }
-  //   } catch (e) {
-  //     print('❌ Error sending verification email: $e');
-  //   }
-  // }
 
   // ==================== LOGIN ====================
-  Future<LoginResponse> loginWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      final body = {'email': email, 'password': password};
-
-      print('📤 Sending login request');
-
-      final response = await _apiService.post(
-        ApiConfig.loginEndpoint,
-        body: body,
-        requiresAuth: false,
-      );
-
-      print('📥 Login Response received');
-      print('📥 Response keys: ${response.keys.toList()}');
-
-      final statusCode = response['statusCode'] ?? response['status'] ?? 200;
-
-      // Check for successful login
-      if ((statusCode >= 200 && statusCode < 300) ||
-          response.containsKey('user') ||
-          response.containsKey('fullUser')) {
-        // Extract user data using unified method
-        final userJson = _extractUserData(response);
-        final user = User.fromJson(userJson);
-
-        // Extract tokens
-        final token =
-            response['accessToken'] ??
-            response['access_token'] ??
-            response['token'] ??
-            response['data']?['accessToken'];
-
-        final refreshToken =
-            response['refreshToken'] ??
-            response['refresh_token'] ??
-            response['data']?['refreshToken'];
-
-        print('✅ User data extracted: ${user.name}');
-        print('✅ Access Token: ${token != null ? "Yes" : "No"}');
-        print('✅ Refresh Token: ${refreshToken != null ? "Yes" : "No"}');
-
-        _currentUser = user;
-
-        // Save tokens
-        if (token != null && token.toString().isNotEmpty) {
-          await storage.write(key: 'auth_token', value: token.toString());
-          print('🔐 Access token saved');
-        } else {
-          throw ApiException('No access token received');
-        }
-
-        if (refreshToken != null && refreshToken.toString().isNotEmpty) {
-          await storage.write(
-            key: 'refresh_token',
-            value: refreshToken.toString(),
-          );
-          print('🔐 Refresh token saved');
-        }
-
-        // Save user data
-        if (user.id != null) {
-          await storage.write(key: 'user_id', value: user.id.toString());
-        }
-
-        await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
-
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        print('✅ Login successful: ${user.name}');
-
-        return LoginResponse(user: user, message: 'Login successful');
-      } else {
-        throw ApiException(response['message'] ?? 'Login failed');
-      }
-    } catch (e) {
-      print('❌ Login error: $e');
-      rethrow;
-    }
-  }
-
-  // ==================== LOGIN WITH MOBILE OTP ====================
-// This method directly logs in using phone and OTP
-// ✅ COMPLETE FIX for loginWithOTP method
-Future<LoginResponse> loginWithOTP({
-  required String phone,
-  required String otp,
-  String countryCode = '+91',  // Default to +91 for India
+  // ==================== LOGIN ====================
+Future<LoginResponse> loginWithEmail({
+  required String email,
+  required String password,
 }) async {
   try {
-    // Ensure phone has country code
-    final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
-    
-    print('📦 Logging in with OTP for: $fullPhone');
-
-    final body = {
-      'phone': fullPhone,  // ✅ Sending with country code
-      'otp': otp,
-    };
+    final body = {'email': email, 'password': password};
+    print('📤 Sending login request');
 
     final response = await _apiService.post(
-      ApiConfig.loginWithOtpEndpoint,
+      ApiConfig.loginEndpoint,
       body: body,
       requiresAuth: false,
     );
-
-    print('📥 OTP Login Response: $response');
+    print('📥 Login Response received');
     print('📥 Response keys: ${response.keys.toList()}');
 
     final statusCode = response['statusCode'] ?? response['status'] ?? 200;
-    final code = response['code'];
+    final message = response['message']?.toString() ?? '';
 
-    // Check for errors
-    if (statusCode >= 400 || (code != null && code >= 400)) {
-      String errorMsg = response['message'] ?? 
-                       response['error'] ?? 
-                       'OTP login failed';
-      throw ApiException(errorMsg);
+    // ==================== CASE 1: EMAIL NOT VERIFIED ====================
+    if (statusCode == 201 || 
+        message.contains('Email is not verified') ||
+        message.contains('not verified') ||
+        response['emailVerified'] == false) {
+      
+      print('⚠️ Email not verified');
+      
+      // Check if backend already sent verification link
+      final verificationLink = response['verificationLink'] ?? 
+                              response['data']?['verificationLink'];
+      
+      return LoginResponse(
+        user: null,
+        message: message.isNotEmpty ? message : 'Email is not verified',
+        statusCode: 201,
+        emailVerified: false,
+        verificationLink: verificationLink?.toString(),
+      );
     }
 
-    // Extract tokens FIRST
-    final token = response['accessToken'] ?? 
-                 response['access_token'] ??
-                 response['token'] ??
-                 response['data']?['accessToken'];
-    
-    final refreshToken = response['refreshToken'] ?? 
-                        response['refresh_token'] ??
-                        response['data']?['refreshToken'];
-
-    if (token == null || token.toString().isEmpty) {
-      throw ApiException('No access token received from server');
+    // ==================== CASE 2: TOO MANY ATTEMPTS ====================
+    if (message.contains('TOO_MANY_ATTEMPTS') || 
+        message.contains('too many attempts') ||
+        statusCode == 429) {
+      
+      print('⚠️ Too many login attempts');
+      
+      throw ApiException(
+        'Too many wrong attempts. Please try again later.',
+        statusCode: 429,
+      );
     }
 
-    print('✅ Access Token: ${token.toString().substring(0, 20)}...');
-    print('✅ Refresh Token: ${refreshToken != null ? "Yes" : "No"}');
-
-    // Save tokens immediately
-    await storage.write(key: 'auth_token', value: token.toString());
-    print('🔐 Access token saved');
-
-    if (refreshToken != null && refreshToken.toString().isNotEmpty) {
-      await storage.write(key: 'refresh_token', value: refreshToken.toString());
-      print('🔐 Refresh token saved');
+    // ==================== CASE 3: INVALID CREDENTIALS ====================
+    if (statusCode == 401 || 
+        message.contains('Invalid credentials') ||
+        message.contains('incorrect password') ||
+        message.contains('user not found')) {
+      
+      print('⚠️ Invalid credentials');
+      
+      throw ApiException(
+        message.isNotEmpty ? message : 'Invalid email or password',
+        statusCode: 401,
+      );
     }
 
-    // Extract user data
-    Map<String, dynamic> userJson;
-    
-    if (response['data'] != null) {
-      final data = response['data'];
-      if (data is Map && data.containsKey('user')) {
-        userJson = _extractUserData({'user': data['user']});
-      } else if (data is Map && data.containsKey('fullUser')) {
-        userJson = _extractUserData({'fullUser': data['fullUser']});
+    // ==================== CASE 4: SUCCESSFUL LOGIN ====================
+    if ((statusCode >= 200 && statusCode < 300) ||
+        response.containsKey('user') ||
+        response.containsKey('fullUser')) {
+      
+      // Extract user data
+      final userJson = _extractUserData(response);
+      final user = User.fromJson(userJson);
+
+      // Extract tokens
+      final token =
+          response['accessToken'] ??
+          response['access_token'] ??
+          response['token'] ??
+          response['data']?['accessToken'];
+
+      final refreshToken =
+          response['refreshToken'] ??
+          response['refresh_token'] ??
+          response['data']?['refreshToken'];
+
+      print('✅ User data extracted: ${user.name}');
+      print('✅ Access Token: ${token != null ? "Yes" : "No"}');
+      print('✅ Refresh Token: ${refreshToken != null ? "Yes" : "No"}');
+
+      _currentUser = user;
+
+      // Save tokens
+      if (token != null && token.toString().isNotEmpty) {
+        await storage.write(key: 'auth_token', value: token.toString());
+        print('🔐 Access token saved');
       } else {
-        userJson = _extractUserData(data);
+        throw ApiException('No access token received');
       }
-    } else if (response.containsKey('user')) {
-      userJson = _extractUserData(response);
-    } else if (response.containsKey('fullUser')) {
-      userJson = _extractUserData(response);
+
+      if (refreshToken != null && refreshToken.toString().isNotEmpty) {
+        await storage.write(
+          key: 'refresh_token',
+          value: refreshToken.toString(),
+        );
+        print('🔐 Refresh token saved');
+      }
+
+      // Save user data
+      if (user.id != null) {
+        await storage.write(key: 'user_id', value: user.id.toString());
+      }
+
+      await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      print('✅ Login successful: ${user.name}');
+
+      return LoginResponse(
+        user: user, 
+        message: 'Login successful',
+        statusCode: 200,
+        emailVerified: true,
+      );
     } else {
-      // Fallback: create minimal user with phone
-      userJson = {
-        'phone': fullPhone,  // Use fullPhone here too
-        'name': phone,
-        'email': '',
-      };
-      print('⚠️ No user data in response, using fallback');
-    }
-
-    final user = User.fromJson(userJson);
-    _currentUser = user;
-
-    // Save user data
-    await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
-    
-    if (user.id != null) {
-      await storage.write(key: 'user_id', value: user.id.toString());
-    }
-    
-    await Future.delayed(const Duration(milliseconds: 100));
-
-    print('✅ OTP Login successful: ${user.name ?? "User"}');
-    
-    return LoginResponse(user: user, message: 'Login successful');
-  } on ApiException {
-    rethrow;
-  } catch (e) {
-    print('❌ OTP Login error: $e');
-    throw ApiException('Login failed: ${e.toString()}');
-  }
-}
-
-  // ==================== SEND OTP ====================
- Future<void> sendOTP({
-  required String phone,
-  required String countryCode,
-}) async {
-  try {
-    // Ensure phone has country code
-    final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
-    
-    print('📦 Sending OTP to: $fullPhone');
-
-    final response = await _apiService.post(
-      ApiConfig.otpSendEndpoint,
-      body: {'phone': fullPhone},  // ✅ Send with country code
-      requiresAuth: false,
-    );
-
-    print('📥 OTP Response: $response');
-
-    final apiStatus = response['status'];
-    final statusCode = response['statusCode'] ?? 201;
-    final code = response['code'];
-
-    if ((statusCode == 200 || statusCode == 201) &&
-        (apiStatus == 'success' || code == 200)) {
-      final otpData = response['data']?['otpDetails'];
-      print('✅ OTP sent to ${otpData?['phone'] ?? fullPhone}');
-    } else {
-      throw Exception(response['message'] ?? 'Failed to send OTP');
+      // ==================== CASE 5: OTHER ERRORS ====================
+      throw ApiException(
+        response['message'] ?? 'Login failed',
+        statusCode: statusCode,
+      );
     }
   } catch (e) {
-    print('❌ OTP send error: $e');
+    print('❌ Login error: $e');
     rethrow;
   }
 }
-  // ==================== VERIFY OTP ====================
-  // Future<Map<String, dynamic>> verifyOTP({
-  //   required String phone,
-  //   required String countryCode,
-  //   required String otp,
+  // Future<LoginResponse> loginWithEmail({
+  //   required String email,
+  //   required String password,
   // }) async {
   //   try {
-  //     print('📦 Verifying OTP for $phone');
+  //     final body = {'email': email, 'password': password};
+  //     print('📤 Sending login request');
 
   //     final response = await _apiService.post(
-  //       ApiConfig.otpVerifyEndpoint,
-  //       body: {'phone': phone, 'otp': otp},
+  //       ApiConfig.loginEndpoint,
+  //       body: body,
   //       requiresAuth: false,
   //     );
+  //     print('📥 Login Response received');
+  //     print('📥 Response keys: ${response.keys.toList()}');
 
-  //     print('📥 OTP Verification Response: $response');
+  //     final statusCode = response['statusCode'] ?? response['status'] ?? 200;
 
-  //     final int code = response['code'] ?? 0;
-
-  //     if (code != 200) {
-  //       throw ApiException('Invalid OTP. Please try again.');
-  //     }
-
-  //     final data = response['data'] ?? {};
-
-  //     // Extract and save tokens
-  //     final token = response['token'];
-  //     if (token != null && token.toString().isNotEmpty) {
-  //       await storage.write(key: 'auth_token', value: token.toString());
-  //       print('🔐 Auth token saved from OTP');
-  //     }
-
-  //     final refreshToken = response['refreshToken'];
-  //     if (refreshToken != null && refreshToken.toString().isNotEmpty) {
-  //       await storage.write(
-  //         key: 'refresh_token',
-  //         value: refreshToken.toString(),
-  //       );
-  //       print('🔐 Refresh token saved from OTP');
-  //     }
-
-  //     // Extract and save user using unified method
-  //     if (data.isNotEmpty) {
-  //       final userJson = _extractUserData(data);
+  //     // Check for successful login
+  //     if ((statusCode >= 200 && statusCode < 300) ||
+  //         response.containsKey('user') ||
+  //         response.containsKey('fullUser')) {
+  //       // Extract user data using unified method
+  //       final userJson = _extractUserData(response);
   //       final user = User.fromJson(userJson);
+
+  //       // Extract tokens
+  //       final token =
+  //           response['accessToken'] ??
+  //           response['access_token'] ??
+  //           response['token'] ??
+  //           response['data']?['accessToken'];
+
+  //       final refreshToken =
+  //           response['refreshToken'] ??
+  //           response['refresh_token'] ??
+  //           response['data']?['refreshToken'];
+
+  //       print('✅ User data extracted: ${user.name}');
+  //       print('✅ Access Token: ${token != null ? "Yes" : "No"}');
+  //       print('✅ Refresh Token: ${refreshToken != null ? "Yes" : "No"}');
+
   //       _currentUser = user;
 
-  //       await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
+  //       // Save tokens
+  //       if (token != null && token.toString().isNotEmpty) {
+  //         await storage.write(key: 'auth_token', value: token.toString());
+  //         print('🔐 Access token saved');
+  //       } else {
+  //         throw ApiException('No access token received');
+  //       }
 
+  //       if (refreshToken != null && refreshToken.toString().isNotEmpty) {
+  //         await storage.write(
+  //           key: 'refresh_token',
+  //           value: refreshToken.toString(),
+  //         );
+  //         print('🔐 Refresh token saved');
+  //       }
+
+  //       // Save user data
   //       if (user.id != null) {
   //         await storage.write(key: 'user_id', value: user.id.toString());
   //       }
 
-  //       print('👤 User logged in via OTP: ${user.name}');
-  //     }
+  //       await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
 
-  //     print('✅ OTP verified successfully');
-  //     return data;
+  //       await Future.delayed(const Duration(milliseconds: 100));
+
+  //       print('✅ Login successful: ${user.name}');
+
+  //       return LoginResponse(user: user, message: 'Login successful');
+  //     } else {
+  //       throw ApiException(response['message'] ?? 'Login failed');
+  //     }
   //   } catch (e) {
-  //     print('❌ OTP verification error: $e');
-  //     throw ApiException('Unable to verify OTP. Please try again.');
+  //     print('❌ Login error: $e');
+  //     rethrow;
   //   }
   // }
-Future<Map<String, dynamic>> verifyOTP({
-  required String phone,
-  required String countryCode,
-  required String otp,
-}) async {
-  try {
-    // Ensure phone has country code
-    final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
-    
-    print('📦 Verifying OTP for registration: $fullPhone');
 
-    final response = await _apiService.post(
-      ApiConfig.otpVerifyEndpoint,
-      body: {'phone': fullPhone, 'otp': otp},  // ✅ Send with country code
-      requiresAuth: false,
-    );
+  // ==================== LOGIN WITH MOBILE OTP ====================
+  // This method directly logs in using phone and OTP
+  // ✅ COMPLETE FIX for loginWithOTP method
+  Future<LoginResponse> loginWithOTP({
+    required String phone,
+    required String otp,
+    String countryCode = '+91',
+  }) async {
+    try {
+      // Ensure phone has country code
+      final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
 
-    print('📥 OTP Verification Response: $response');
+      print('📤 Sending OTP login request for: $fullPhone');
 
-    final int code = response['code'] ?? 0;
+      final body = {'phone': fullPhone, 'otp': otp};
 
-    if (code != 200) {
-      throw ApiException('Invalid OTP. Please try again.');
+      final response = await _apiService.post(
+        ApiConfig.loginWithOtpEndpoint,
+        body: body,
+        requiresAuth: false,
+      );
+
+      print('📥 OTP Login Response received');
+
+      final statusCode = response['statusCode'] ?? response['status'] ?? 200;
+      final code = response['code'];
+
+      // Check for errors
+      if (statusCode >= 400 || (code != null && code >= 400)) {
+        String errorMsg =
+            response['message'] ?? response['error'] ?? 'OTP login failed';
+        throw ApiException(errorMsg);
+      }
+
+      // Extract tokens FIRST
+      final token =
+          response['accessToken'] ??
+          response['access_token'] ??
+          response['token'] ??
+          response['data']?['accessToken'];
+
+      final refreshToken =
+          response['refreshToken'] ??
+          response['refresh_token'] ??
+          response['data']?['refreshToken'];
+
+      if (token == null || token.toString().isEmpty) {
+        throw ApiException('No access token received from server');
+      }
+
+      print('✅ Access Token received: Yes');
+      print('✅ Refresh Token received: ${refreshToken != null ? "Yes" : "No"}');
+
+      // ✅ SAVE TOKENS TO STORAGE
+      await storage.write(key: 'auth_token', value: token.toString());
+      print('🔐 Access token saved to storage');
+
+      if (refreshToken != null && refreshToken.toString().isNotEmpty) {
+        await storage.write(
+          key: 'refresh_token',
+          value: refreshToken.toString(),
+        );
+        print('🔐 Refresh token saved to storage');
+      }
+
+      // Extract user data
+      Map<String, dynamic> userJson;
+
+      if (response['data'] != null) {
+        final data = response['data'];
+        if (data is Map && data.containsKey('user')) {
+          userJson = _extractUserData({'user': data['user']});
+        } else if (data is Map && data.containsKey('fullUser')) {
+          userJson = _extractUserData({'fullUser': data['fullUser']});
+        } else {
+          userJson = _extractUserData(data);
+        }
+      } else if (response.containsKey('user')) {
+        userJson = _extractUserData(response);
+      } else if (response.containsKey('fullUser')) {
+        userJson = _extractUserData(response);
+      } else {
+        // Fallback: create minimal user
+        userJson = {'phone': fullPhone, 'name': phone, 'email': ''};
+        print('⚠️ No user data in response, using fallback');
+      }
+
+      final user = User.fromJson(userJson);
+      _currentUser = user;
+
+      // Save user data
+      await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
+
+      if (user.id != null) {
+        await storage.write(key: 'user_id', value: user.id.toString());
+      }
+
+      // ✅ WAIT FOR STORAGE
+      await Future.delayed(const Duration(milliseconds: 200));
+
+      // ✅ VERIFY TOKEN WAS SAVED
+      final savedToken = await storage.read(key: 'auth_token');
+      if (savedToken == null || savedToken.isEmpty) {
+        print('❌ CRITICAL: Token not saved after OTP login!');
+        throw ApiException('Authentication failed - please try again');
+      }
+
+      print('✅ ✅ ✅ TOKEN VERIFIED IN STORAGE! ✅ ✅ ✅');
+      print('✅ Token length: ${savedToken.length}');
+      print('✅ Token will be included in ALL API headers from now on');
+      print('✅ OTP login successful: ${user.name ?? "User"}');
+
+      return LoginResponse(user: user, message: 'Login successful');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      print('❌ OTP Login error: $e');
+      throw ApiException('Login failed: ${e.toString()}');
     }
-
-    return response['data'] ?? {};
-  } catch (e) {
-    print('❌ OTP verification error: $e');
-    throw ApiException('Unable to verify OTP. Please try again.');
   }
-}
+  // Future<LoginResponse> loginWithOTP({
+  //   required String phone,
+  //   required String otp,
+  //   String countryCode = '+91',  // Default to +91 for India
+  // }) async {
+  //   try {
+  //     // Ensure phone has country code
+  //     final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
+
+  //     print('📦 Logging in with OTP for: $fullPhone');
+
+  //     final body = {
+  //       'phone': fullPhone,  // ✅ Sending with country code
+  //       'otp': otp,
+  //     };
+
+  //     final response = await _apiService.post(
+  //       ApiConfig.loginWithOtpEndpoint,
+  //       body: body,
+  //       requiresAuth: false,
+  //     );
+
+  //     print('📥 OTP Login Response: $response');
+  //     print('📥 Response keys: ${response.keys.toList()}');
+
+  //     final statusCode = response['statusCode'] ?? response['status'] ?? 200;
+  //     final code = response['code'];
+
+  //     // Check for errors
+  //     if (statusCode >= 400 || (code != null && code >= 400)) {
+  //       String errorMsg = response['message'] ??
+  //                        response['error'] ??
+  //                        'OTP login failed';
+  //       throw ApiException(errorMsg);
+  //     }
+
+  //     // Extract tokens FIRST
+  //     final token = response['accessToken'] ??
+  //                  response['access_token'] ??
+  //                  response['token'] ??
+  //                  response['data']?['accessToken'];
+
+  //     final refreshToken = response['refreshToken'] ??
+  //                         response['refresh_token'] ??
+  //                         response['data']?['refreshToken'];
+
+  //     if (token == null || token.toString().isEmpty) {
+  //       throw ApiException('No access token received from server');
+  //     }
+
+  //     print('✅ Access Token: ${token.toString().substring(0, 20)}...');
+  //     print('✅ Refresh Token: ${refreshToken != null ? "Yes" : "No"}');
+
+  //     // Save tokens immediately
+  //     await storage.write(key: 'auth_token', value: token.toString());
+  //     print('🔐 Access token saved');
+
+  //     if (refreshToken != null && refreshToken.toString().isNotEmpty) {
+  //       await storage.write(key: 'refresh_token', value: refreshToken.toString());
+  //       print('🔐 Refresh token saved');
+  //     }
+
+  //     // Extract user data
+  //     Map<String, dynamic> userJson;
+
+  //     if (response['data'] != null) {
+  //       final data = response['data'];
+  //       if (data is Map && data.containsKey('user')) {
+  //         userJson = _extractUserData({'user': data['user']});
+  //       } else if (data is Map && data.containsKey('fullUser')) {
+  //         userJson = _extractUserData({'fullUser': data['fullUser']});
+  //       } else {
+  //         userJson = _extractUserData(data);
+  //       }
+  //     } else if (response.containsKey('user')) {
+  //       userJson = _extractUserData(response);
+  //     } else if (response.containsKey('fullUser')) {
+  //       userJson = _extractUserData(response);
+  //     } else {
+  //       // Fallback: create minimal user with phone
+  //       userJson = {
+  //         'phone': fullPhone,  // Use fullPhone here too
+  //         'name': phone,
+  //         'email': '',
+  //       };
+  //       print('⚠️ No user data in response, using fallback');
+  //     }
+
+  //     final user = User.fromJson(userJson);
+  //     _currentUser = user;
+
+  //     // Save user data
+  //     await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
+
+  //     if (user.id != null) {
+  //       await storage.write(key: 'user_id', value: user.id.toString());
+  //     }
+
+  //     await Future.delayed(const Duration(milliseconds: 100));
+
+  //     print('✅ OTP Login successful: ${user.name ?? "User"}');
+
+  //     return LoginResponse(user: user, message: 'Login successful');
+  //   } on ApiException {
+  //     rethrow;
+  //   } catch (e) {
+  //     print('❌ OTP Login error: $e');
+  //     throw ApiException('Login failed: ${e.toString()}');
+  //   }
+  // }
+
+  // ==================== SEND OTP ====================
+  Future<void> sendOTP({
+    required String phone,
+    required String countryCode,
+  }) async {
+    try {
+      // Ensure phone has country code
+      final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
+
+      print('📦 Sending OTP to: $fullPhone');
+
+      final response = await _apiService.post(
+        ApiConfig.otpSendEndpoint,
+        body: {'phone': fullPhone}, // ✅ Send with country code
+        requiresAuth: false,
+      );
+
+      print('📥 OTP Response: $response');
+
+      final apiStatus = response['status'];
+      final statusCode = response['statusCode'] ?? 201;
+      final code = response['code'];
+
+      if ((statusCode == 200 || statusCode == 201) &&
+          (apiStatus == 'success' || code == 200)) {
+        final otpData = response['data']?['otpDetails'];
+        print('✅ OTP sent to ${otpData?['phone'] ?? fullPhone}');
+      } else {
+        throw Exception(response['message'] ?? 'Failed to send OTP');
+      }
+    } catch (e) {
+      print('❌ OTP send error: $e');
+      rethrow;
+    }
+  }
+  // ==================== VERIFY OTP ====================
+
+  Future<Map<String, dynamic>> verifyOTP({
+    required String phone,
+    required String countryCode,
+    required String otp,
+  }) async {
+    try {
+      // Ensure phone has country code
+      final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
+
+      print('📦 Verifying OTP for registration: $fullPhone');
+
+      final response = await _apiService.post(
+        ApiConfig.otpVerifyEndpoint,
+        body: {'phone': fullPhone, 'otp': otp}, // ✅ Send with country code
+        requiresAuth: false,
+      );
+
+      print('📥 OTP Verification Response: $response');
+
+      final int code = response['code'] ?? 0;
+
+      if (code != 200) {
+        throw ApiException('Invalid OTP. Please try again.');
+      }
+
+      return response['data'] ?? {};
+    } catch (e) {
+      print('❌ OTP verification error: $e');
+      throw ApiException('Unable to verify OTP. Please try again.');
+    }
+  }
+
   // ==================== RESEND OTP ====================
- Future<Map<String, dynamic>> resendOTP({
-  required String phone,
-  required String countryCode,
-}) async {
-  try {
-    // ✅ ADD THIS LINE - Combine country code with phone
-    final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
-    
-    print('📦 Resending OTP to: $fullPhone');  // ✅ Changed to fullPhone
+  Future<Map<String, dynamic>> resendOTP({
+    required String phone,
+    required String countryCode,
+  }) async {
+    try {
+      // ✅ ADD THIS LINE - Combine country code with phone
+      final fullPhone = phone.startsWith('+') ? phone : '$countryCode$phone';
 
-    final response = await _apiService.post(
-      ApiConfig.otpSendEndpoint,
-      body: {'phone': fullPhone},  // ✅ Changed from phone to fullPhone
-      requiresAuth: false,
-    );
+      print('📦 Resending OTP to: $fullPhone'); // ✅ Changed to fullPhone
 
-    final apiStatus = response['status']?.toString().toLowerCase();
-    final code = response['code'] ?? 0;
+      final response = await _apiService.post(
+        ApiConfig.otpSendEndpoint,
+        body: {'phone': fullPhone}, // ✅ Changed from phone to fullPhone
+        requiresAuth: false,
+      );
 
-    if (apiStatus == 'success' || code == 200 || code == 201) {
-      final otpData = response['data']?['otpDetails'];
-      print('✅ OTP resent to ${otpData?['phone'] ?? fullPhone}');  // ✅ Changed to fullPhone
+      final apiStatus = response['status']?.toString().toLowerCase();
+      final code = response['code'] ?? 0;
 
-      return {
-        'success': true,
-        'message': otpData?['message'] ?? 'OTP sent successfully',
-        'data': otpData,
-      };
-    } else {
-      final errorMessage = response['message'] ?? 'Failed to send OTP';
-      return {'success': false, 'message': errorMessage, 'data': null};
+      if (apiStatus == 'success' || code == 200 || code == 201) {
+        final otpData = response['data']?['otpDetails'];
+        print(
+          '✅ OTP resent to ${otpData?['phone'] ?? fullPhone}',
+        ); // ✅ Changed to fullPhone
+
+        return {
+          'success': true,
+          'message': otpData?['message'] ?? 'OTP sent successfully',
+          'data': otpData,
+        };
+      } else {
+        final errorMessage = response['message'] ?? 'Failed to send OTP';
+        return {'success': false, 'message': errorMessage, 'data': null};
+      }
+    } catch (e) {
+      print('❌ OTP resend error: $e');
+      return {'success': false, 'message': e.toString(), 'data': null};
     }
-  } catch (e) {
-    print('❌ OTP resend error: $e');
-    return {'success': false, 'message': e.toString(), 'data': null};
   }
-}
 
-Future<Map<String, dynamic>> sendForgotPasswordOTP(String emailOrPhone) async {
+  Future<Map<String, dynamic>> sendForgotPasswordOTP(
+    String emailOrPhone,
+  ) async {
     try {
       final response = await _apiService.post(
         "/user/auth/request-reset-password",
-        body: {
-          "email": emailOrPhone,
-        },
+        body: {"email": emailOrPhone},
       );
 
       return {
@@ -964,50 +1060,41 @@ Future<Map<String, dynamic>> sendForgotPasswordOTP(String emailOrPhone) async {
         "message": response["message"] ?? "Reset link sent successfully",
       };
     } catch (e) {
-      return {
-        "success": false,
-        "message": e.toString(),
-      };
+      return {"success": false, "message": e.toString()};
     }
   }
 
-  // ==================== FORGOT PASSWORD ====================
-  // Future<Map<String, dynamic>> sendForgotPasswordOTP(String email) async {
+  // ==================== VERIFY FORGOT PASSWORD OTP ====================
+  // Future<Map<String, dynamic>> verifyForgotPasswordOTP({
+  //   required String input,
+  //   required String otp,
+  // }) async {
   //   try {
-  //     final trimmed = email.trim();
+  //     final bool isEmail = _isEmail(input.trim());
 
-  //     if (trimmed.isEmpty) {
-  //       return {
-  //         'success': false,
-  //         'message': 'Please enter your email address.',
-  //       };
-  //     }
-
-  //     final body = {'emailOrMobile': trimmed};
-
-  //     print('📤 Sending forgot password OTP');
+  //     final body = isEmail
+  //         ? {'email': input.trim(), 'otp': otp.trim()}
+  //         : {'mobile': input.trim(), 'countryCode': '+91', 'otp': otp.trim()};
 
   //     final response = await _apiService.post(
-  //       ApiConfig.forgotPasswordEndpoint,
+  //       ApiConfig.resetPasswordEndpoint,
   //       body: body,
   //       requiresAuth: false,
   //     );
 
-  //     print('📥 Forgot Password Response: $response');
-
   //     if (response['success'] == true) {
   //       return {
   //         'success': true,
-  //         'message': response['message'] ?? 'OTP sent successfully',
+  //         'message': response['message'] ?? 'OTP verified successfully',
   //       };
   //     } else {
   //       return {
   //         'success': false,
-  //         'message': response['message'] ?? 'Failed to send OTP',
+  //         'message': response['message'] ?? 'Invalid or expired OTP',
   //       };
   //     }
   //   } catch (e) {
-  //     print('❌ Forgot password error: $e');
+  //     print('❌ Verify forgot password OTP error: $e');
   //     return {
   //       'success': false,
   //       'message': 'Something went wrong: ${e.toString()}',
@@ -1015,94 +1102,7 @@ Future<Map<String, dynamic>> sendForgotPasswordOTP(String emailOrPhone) async {
   //   }
   // }
 
-  // ==================== VERIFY FORGOT PASSWORD OTP ====================
-  Future<Map<String, dynamic>> verifyForgotPasswordOTP({
-    required String input,
-    required String otp,
-  }) async {
-    try {
-      final bool isEmail = _isEmail(input.trim());
-
-      final body = isEmail
-          ? {'email': input.trim(), 'otp': otp.trim()}
-          : {'mobile': input.trim(), 'countryCode': '+91', 'otp': otp.trim()};
-
-      final response = await _apiService.post(
-        ApiConfig.resetPasswordEndpoint,
-        body: body,
-        requiresAuth: false,
-      );
-
-      if (response['success'] == true) {
-        return {
-          'success': true,
-          'message': response['message'] ?? 'OTP verified successfully',
-        };
-      } else {
-        return {
-          'success': false,
-          'message': response['message'] ?? 'Invalid or expired OTP',
-        };
-      }
-    } catch (e) {
-      print('❌ Verify forgot password OTP error: $e');
-      return {
-        'success': false,
-        'message': 'Something went wrong: ${e.toString()}',
-      };
-    }
-  }
-
   // ==================== GET USER PROFILE ====================
-  // Future<User> getUserProfile() async {
-  //   try {
-  //     final token = await storage.read(key: 'auth_token');
-  //     final userId = await storage.read(key: 'user_id');
-
-  //     if (token == null || userId == null) {
-  //       throw Exception('Missing authentication credentials');
-  //     }
-
-  //     final response = await _apiService.get(
-  // ApiConfig.userProfileEndpoint,
-
-  //       requiresAuth: true,
-  //     );
-
-  //     final userJson = _extractUserData(response);
-  //     _currentUser = User.fromJson(userJson);
-
-  //     await storage.write(
-  //       key: 'user_data',
-  //       value: jsonEncode(_currentUser!.toJson()),
-  //     );
-
-  //     print('✅ User profile fetched');
-  //     return _currentUser!;
-  //   } catch (e) {
-  //     print('❌ Error fetching user profile: $e');
-  //     rethrow;
-  //   }
-  // }
-
-  //  Future<User> getUserProfile() async {
-  //     try {
-  //       final response = await _apiService.get(
-  //         ApiConfig.userProfileEndpoint, // '/users/me'
-  //         requiresAuth: true,            // token is automatically included in headers
-  //       );
-
-  //       final userJson = response["data"] ?? response;
-
-  //       return User.fromJson(userJson);
-  //     } catch (e) {
-  //       print('❌ Error fetching user profile: $e');
-  //       rethrow;
-  //     }
-  //   }
-  // In auth_service.dart
-
-  // Keep your existing getUserProfile() method for backward compatibility
   Future<User> getUserProfile() async {
     try {
       final response = await _apiService.get(
@@ -1225,6 +1225,314 @@ Future<Map<String, dynamic>> sendForgotPasswordOTP(String emailOrPhone) async {
 
 
 
+// // ==================== REGISTER ====================
+  // Future<RegisterResponse> register({
+  //   required String email,
+  //   required String password,
+  //   required String name,
+  //   required String lastName,
+  //   String? phone,
+  //   required String countryCode,
+  //   String? dateOfBirth,
+  //   String? gender,
+  // }) async {
+  //   try {
+  //     final nameParts = name.trim().split(' ');
+  //     final firstName = nameParts.first;
+
+  //     final body = {
+  //       'firstName': firstName,
+  //       'lastName': lastName,
+  //       'photo': '',
+  //       'age': '',
+  //       'email': email,
+  //       'phoneNumber': phone ?? '',
+  //       'password': password,
+  //       'bank_details': {
+  //         'bank_name': '',
+  //         'ifsc_code': '',
+  //         'account_number': '',
+  //         'account_type': '',
+  //       },
+  //       'address': {
+  //         'city': '',
+  //         'state': '',
+  //         'pincode': '',
+  //         'address': '',
+  //         'address_secondary': '',
+  //       },
+  //     };
+
+  //     print('📤 Sending registration request');
+
+  //     final response = await _apiService.post(
+  //       ApiConfig.signupEndpoint,
+  //       body: body,
+  //       requiresAuth: false,
+  //     );
+
+  //     print('📥 Registration Response: $response');
+
+  //     // Extract user data using unified method
+  //     final userJson = _extractUserData(response);
+  //     _currentUser = User.fromJson(userJson);
+
+  //     // Extract and save tokens
+  //     final token = response['accessToken'] ??
+  //         response['token'] ??
+  //         response['data']?['token'];
+
+  //     final refreshToken = response['refreshToken'] ??
+  //         response['refresh_token'] ??
+  //         response['data']?['refreshToken'];
+
+  //     if (token != null && token.toString().isNotEmpty) {
+  //       await storage.write(key: 'auth_token', value: token.toString());
+  //       print('🔐 Access token saved');
+  //     }
+
+  //     if (refreshToken != null && refreshToken.toString().isNotEmpty) {
+  //       await storage.write(key: 'refresh_token', value: refreshToken.toString());
+  //       print('🔐 Refresh token saved');
+  //     }
+
+  //     // Save user data
+  //     await storage.write(
+  //       key: 'user_data',
+  //       value: jsonEncode(_currentUser!.toJson()),
+  //     );
+
+  //     if (_currentUser!.id != null) {
+  //       await storage.write(key: 'user_id', value: _currentUser!.id.toString());
+  //     }
+
+  //     // Send verification email
+  //     await sendEmailVerification(email);
+
+  //     print('✅ Registration successful: ${_currentUser!.name}');
+
+  //     return RegisterResponse(
+  //       user: _currentUser!,
+  //       message: 'Registration successful',
+  //     );
+  //   } catch (e) {
+  //     print('❌ Registration error: $e');
+  //     rethrow;
+  //   }
+  // }
+
+ // // ==================== SEND EMAIL VERIFICATION ====================
+  // // This is automatically called after registration
+  // Future<void> sendEmailVerification(String email) async {
+  //   try {
+  //     final response = await _apiService.post(
+  //       ApiConfig.firebaseSendVerificationEndpoint,
+  //       body: {
+  //         "email": email,
+  //         "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action"
+  //       },
+  //       requiresAuth: true, // User must be authenticated to send verification
+  //     );
+
+  //     print('📩 Verification response: $response');
+
+  //     if (response['statusCode'] == 200 ||
+  //         response['statusCode'] == 201 ||
+  //         response['status'] == 200 ||
+  //         response['status'] == 201 ||
+  //         response['success'] == true) {
+  //       print('📩 Verification email sent successfully to $email');
+  //     } else {
+  //       print('⚠️ Failed to send verification: ${response['message']}');
+  //       // Don't throw - verification email failure shouldn't block registration
+  //     }
+  //   } catch (e) {
+  //     print('❌ Error sending verification email: $e');
+  //     // Don't throw - verification email is not critical for registration completion
+  //   }
+  // }
+
+
+// ==================== SEND EMAIL VERIFICATION ====================
+  // Future<void> sendEmailVerification(String email) async {
+  //   try {
+  //     final response = await _apiService.post(
+  //       ApiConfig.firebaseSendVerificationEndpoint,
+  //       body: {
+  //         "email": email,
+  //         "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action"
+  //       },
+  //       requiresAuth: false, // ❗ FIXED (should NOT require auth)
+  //     );
+
+  //     print('📩 Verification response: $response');
+
+  //     if (response['status'] == 200 || response['status'] == 201 || response['success'] == true) {
+  //       print('📩 Verification email sent successfully');
+  //     } else {
+  //       print('⚠️ Failed to send verification: ${response['message']}');
+  //     }
+  //   } catch (e) {
+  //     print('❌ Error sending verification email: $e');
+  //   }
+  // }
+
+// Future<Map<String, dynamic>> verifyOTP({
+  //   required String phone,
+  //   required String countryCode,
+  //   required String otp,
+  // }) async {
+  //   try {
+  //     print('📦 Verifying OTP for $phone');
+
+  //     final response = await _apiService.post(
+  //       ApiConfig.otpVerifyEndpoint,
+  //       body: {'phone': phone, 'otp': otp},
+  //       requiresAuth: false,
+  //     );
+
+  //     print('📥 OTP Verification Response: $response');
+
+  //     final int code = response['code'] ?? 0;
+
+  //     if (code != 200) {
+  //       throw ApiException('Invalid OTP. Please try again.');
+  //     }
+
+  //     final data = response['data'] ?? {};
+
+  //     // Extract and save tokens
+  //     final token = response['token'];
+  //     if (token != null && token.toString().isNotEmpty) {
+  //       await storage.write(key: 'auth_token', value: token.toString());
+  //       print('🔐 Auth token saved from OTP');
+  //     }
+
+  //     final refreshToken = response['refreshToken'];
+  //     if (refreshToken != null && refreshToken.toString().isNotEmpty) {
+  //       await storage.write(
+  //         key: 'refresh_token',
+  //         value: refreshToken.toString(),
+  //       );
+  //       print('🔐 Refresh token saved from OTP');
+  //     }
+
+  //     // Extract and save user using unified method
+  //     if (data.isNotEmpty) {
+  //       final userJson = _extractUserData(data);
+  //       final user = User.fromJson(userJson);
+  //       _currentUser = user;
+
+  //       await storage.write(key: 'user_data', value: jsonEncode(user.toJson()));
+
+  //       if (user.id != null) {
+  //         await storage.write(key: 'user_id', value: user.id.toString());
+  //       }
+
+  //       print('👤 User logged in via OTP: ${user.name}');
+  //     }
+
+  //     print('✅ OTP verified successfully');
+  //     return data;
+  //   } catch (e) {
+  //     print('❌ OTP verification error: $e');
+  //     throw ApiException('Unable to verify OTP. Please try again.');
+  //   }
+  // }
+
+// ==================== FORGOT PASSWORD ====================
+  // Future<Map<String, dynamic>> sendForgotPasswordOTP(String email) async {
+  //   try {
+  //     final trimmed = email.trim();
+
+  //     if (trimmed.isEmpty) {
+  //       return {
+  //         'success': false,
+  //         'message': 'Please enter your email address.',
+  //       };
+  //     }
+
+  //     final body = {'emailOrMobile': trimmed};
+
+  //     print('📤 Sending forgot password OTP');
+
+  //     final response = await _apiService.post(
+  //       ApiConfig.forgotPasswordEndpoint,
+  //       body: body,
+  //       requiresAuth: false,
+  //     );
+
+  //     print('📥 Forgot Password Response: $response');
+
+  //     if (response['success'] == true) {
+  //       return {
+  //         'success': true,
+  //         'message': response['message'] ?? 'OTP sent successfully',
+  //       };
+  //     } else {
+  //       return {
+  //         'success': false,
+  //         'message': response['message'] ?? 'Failed to send OTP',
+  //       };
+  //     }
+  //   } catch (e) {
+  //     print('❌ Forgot password error: $e');
+  //     return {
+  //       'success': false,
+  //       'message': 'Something went wrong: ${e.toString()}',
+  //     };
+  //   }
+  // }
+
+ // Future<User> getUserProfile() async {
+  //   try {
+  //     final token = await storage.read(key: 'auth_token');
+  //     final userId = await storage.read(key: 'user_id');
+
+  //     if (token == null || userId == null) {
+  //       throw Exception('Missing authentication credentials');
+  //     }
+
+  //     final response = await _apiService.get(
+  // ApiConfig.userProfileEndpoint,
+
+  //       requiresAuth: true,
+  //     );
+
+  //     final userJson = _extractUserData(response);
+  //     _currentUser = User.fromJson(userJson);
+
+  //     await storage.write(
+  //       key: 'user_data',
+  //       value: jsonEncode(_currentUser!.toJson()),
+  //     );
+
+  //     print('✅ User profile fetched');
+  //     return _currentUser!;
+  //   } catch (e) {
+  //     print('❌ Error fetching user profile: $e');
+  //     rethrow;
+  //   }
+  // }
+
+  //  Future<User> getUserProfile() async {
+  //     try {
+  //       final response = await _apiService.get(
+  //         ApiConfig.userProfileEndpoint, // '/users/me'
+  //         requiresAuth: true,            // token is automatically included in headers
+  //       );
+
+  //       final userJson = response["data"] ?? response;
+
+  //       return User.fromJson(userJson);
+  //     } catch (e) {
+  //       print('❌ Error fetching user profile: $e');
+  //       rethrow;
+  //     }
+  //   }
+  // In auth_service.dart
+
+  // Keep your existing getUserProfile() method for backward compatibility
 
 // import 'dart:convert';
 // import 'dart:io';

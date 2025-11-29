@@ -155,7 +155,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final transaction = await _transactionService.createCartTransaction(
       cartGroupUid: widget.cartGroupUid,
       mode: 'cod',
-      description: 'Cash on Delivery order',
+      // description: 'Cash on Delivery order',
     );
 
     print("✅ COD Transaction created: $transaction");
@@ -184,7 +184,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final transaction = await _transactionService.createCartTransaction(
       cartGroupUid: widget.cartGroupUid,
       mode: 'online',
-      description: 'Online payment via Razorpay',
+      // description: 'Online payment via Razorpay',
     );
 
     print("✅ Transaction created: $transaction");

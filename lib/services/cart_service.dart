@@ -146,6 +146,8 @@ class CartService {
     print("🗑 Clear Restaurant Cart => $response");
   }
 
+
+
   // In cart_service.dart
   // Future<Map<String, dynamic>> getCartDetailsWithRestaurant(String restaurantId) async {
   //   try {

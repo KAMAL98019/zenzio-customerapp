@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:zenzio/core/status_codes.dart';
+import 'package:zenzio/screens/auth/VerifyEmailScreen.dart';
 import '../../widgets/logo_widget.dart';
 import '../../widgets/custom_button.dart';
 import '../../core/constants/app_colors.dart';
@@ -51,12 +52,10 @@ class _LoginScreenState extends State<LoginScreen>
     _showErrorDialog('Please enter your phone number');
     return;
   }
-
   if (phone.length != 10) {
     _showErrorDialog('Please enter a valid 10-digit phone number');
     return;
   }
-
   setState(() => _isLoading = true);
 
   try {
@@ -117,36 +116,124 @@ class _LoginScreenState extends State<LoginScreen>
   }
 }
 
-  // ===================== EMAIL LOGIN =====================
-  Future<void> _handleEmailLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
+  // ===================== EMAIL LOGIN ===================== 
+// ===================== EMAIL LOGIN ===================== 
+Future<void> _handleEmailLogin() async {
+  final email = _emailController.text.trim();
+  final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      _showErrorDialog('Please enter both email and password');
-      return;
-    }
+  // ==================== VALIDATION ====================
+  if (email.isEmpty || password.isEmpty) {
+    _showErrorDialog('Please enter both email and password');
+    return;
+  }
 
-    // ✅ Email validation
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(email)) {
-      _showErrorDialog('Please enter a valid email address');
-      return;
-    }
+  final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+  if (!emailRegex.hasMatch(email)) {
+    _showErrorDialog('Please enter a valid email address');
+    return;
+  }
 
-    setState(() => _isLoading = true);
+  setState(() => _isLoading = true);
 
-    try {
-      final loginResponse = await _authService.loginWithEmail(
-        email: email,
-        password: password,
+  try {
+    final loginResponse = await _authService.loginWithEmail(
+      email: email,
+      password: password,
+    );
+
+    if (!mounted) return;
+
+    // ==================== CASE 1: EMAIL NOT VERIFIED (201) ====================
+    if (loginResponse.statusCode == 201 || 
+        loginResponse.emailVerified == false) {
+      
+      setState(() => _isLoading = false);
+
+      print('⚠️ Email not verified - redirecting to verification screen');
+
+      // Show dialog with option to resend email
+      final shouldNavigate = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('Email Not Verified'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Your email address has not been verified yet.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                email,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Please check your inbox and click the verification link to continue.',
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              child: const Text(
+                'Go to Verification',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
       );
 
-      print('✅ Login completed successfully');
+      if (shouldNavigate == true && mounted) {
+        // If backend didn't send email automatically, send it now
+        if (loginResponse.verificationLink == null) {
+          try {
+            await _authService.sendEmailVerification(email);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Verification email sent!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          } catch (e) {
+            print('⚠️ Failed to send verification email: $e');
+          }
+        }
 
-      if (!mounted) return;
+        // Navigate to verification screen
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerifyEmailScreen(email: email),
+          ),
+        );
+      }
+      return;
+    }
 
+    // ==================== CASE 2: SUCCESSFUL LOGIN ====================
+    if (loginResponse.user != null && loginResponse.emailVerified == true) {
       setState(() => _isLoading = false);
+
+      print('✅ Login completed successfully');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -156,66 +243,223 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       await Future.delayed(const Duration(milliseconds: 500));
-
+      
       Navigator.pushNamedAndRemoveUntil(
         context,
         '/main-navigation',
         (route) => false,
       );
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      
-      setState(() => _isLoading = false);
-      
-      print('⚠️ API Error: ${e.message}');
-
-      String errorMessage = e.message;
-      try {
-        final RegExp jsonFinder = RegExp(r'\{.*\}');
-        final match = jsonFinder.firstMatch(e.message);
-        if (match != null) {
-          final jsonString = match.group(0)!;
-          final Map<String, dynamic> errorData = jsonDecode(jsonString);
-
-          if (errorData.containsKey('details') &&
-              errorData['details'] is List) {
-            errorMessage = (errorData['details'] as List).join('\n');
-          } else if (errorData.containsKey('details')) {
-            errorMessage = errorData['details'].toString();
-          } else if (errorData.containsKey('message')) {
-            errorMessage = errorData['message'].toString();
-          }
-        }
-      } catch (_) {
-        // If parsing fails, use original message
-      }
-
-      _showErrorDialog(errorMessage);
-    } catch (e) {
-      if (!mounted) return;
-      
-      setState(() => _isLoading = false);
-      print('❌ Unexpected error: $e');
-      _showErrorDialog('An unexpected error occurred. Please try again.');
+      return;
     }
+
+    // If we reach here, something unexpected happened
+    setState(() => _isLoading = false);
+    _showErrorDialog('Login failed. Please try again.');
+
+  } on ApiException catch (e) {
+    if (!mounted) return;
+    
+    setState(() => _isLoading = false);
+    
+    print('⚠️ API Error: ${e.message} (Status: ${e.statusCode})');
+
+    // ==================== CASE 3: TOO MANY ATTEMPTS (429) ====================
+    if (e.statusCode == 429 || 
+        e.message.contains('TOO_MANY_ATTEMPTS') ||
+        e.message.contains('too many attempts')) {
+      
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Too Many Attempts'),
+          content: const Text(
+            'You have made too many login attempts. Please try again later.',
+            style: TextStyle(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // ==================== CASE 4: INVALID CREDENTIALS (401) ====================
+    if (e.statusCode == 401) {
+      _showErrorDialog('Invalid email or password. Please try again.');
+      return;
+    }
+
+    // ==================== CASE 5: OTHER API ERRORS ====================
+    String errorMessage = e.message;
+    
+    // Try to extract clean error message from JSON
+    try {
+      final RegExp jsonFinder = RegExp(r'\{.*\}');
+      final match = jsonFinder.firstMatch(e.message);
+      if (match != null) {
+        final jsonString = match.group(0)!;
+        final Map<String, dynamic> errorData = jsonDecode(jsonString);
+
+        if (errorData.containsKey('details') && errorData['details'] is List) {
+          errorMessage = (errorData['details'] as List).join('\n');
+        } else if (errorData.containsKey('details')) {
+          errorMessage = errorData['details'].toString();
+        } else if (errorData.containsKey('message')) {
+          errorMessage = errorData['message'].toString();
+        }
+      }
+    } catch (_) {
+      // If parsing fails, use original message
+    }
+    
+    _showErrorDialog(errorMessage);
+
+  } catch (e) {
+    // ==================== CASE 6: UNEXPECTED ERRORS ====================
+    if (!mounted) return;
+    
+    setState(() => _isLoading = false);
+    print('❌ Unexpected error: $e');
+    _showErrorDialog('An unexpected error occurred. Please try again.');
   }
+}
+  // Future<void> _handleEmailLogin() async {
+  //   final email = _emailController.text.trim();
+  //   final password = _passwordController.text;
+
+  //   if (email.isEmpty || password.isEmpty) {
+  //     _showErrorDialog('Please enter both email and password');
+  //     return;
+  //   }
+
+  //   // ✅ Email validation
+  //   final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+  //   if (!emailRegex.hasMatch(email)) {
+  //     _showErrorDialog('Please enter a valid email address');
+  //     return;
+  //   }
+
+  //   setState(() => _isLoading = true);
+
+  //   try {
+  //     final loginResponse = await _authService.loginWithEmail(
+  //       email: email,
+  //       password: password,
+  //     );
+
+  //     print('✅ Login completed successfully');
+
+  //     if (!mounted) return;
+
+  //     setState(() => _isLoading = false);
+
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('Login successful!'),
+  //         backgroundColor: Colors.green,
+  //       ),
+  //     );
+
+  //     await Future.delayed(const Duration(milliseconds: 500));
+  //     Navigator.pushNamedAndRemoveUntil(
+  //       context,
+  //       '/main-navigation',
+  //       (route) => false,
+  //     );
+  //   } on ApiException catch (e) {
+  //     if (!mounted) return;
+      
+  //     setState(() => _isLoading = false);
+      
+  //     print('⚠️ API Error: ${e.message}');
+
+  //     String errorMessage = e.message;
+  //     try {
+  //       final RegExp jsonFinder = RegExp(r'\{.*\}');
+  //       final match = jsonFinder.firstMatch(e.message);
+  //       if (match != null) {
+  //         final jsonString = match.group(0)!;
+  //         final Map<String, dynamic> errorData = jsonDecode(jsonString);
+
+  //         if (errorData.containsKey('details') &&
+  //             errorData['details'] is List) {
+  //           errorMessage = (errorData['details'] as List).join('\n');
+  //         } else if (errorData.containsKey('details')) {
+  //           errorMessage = errorData['details'].toString();
+  //         } else if (errorData.containsKey('message')) {
+  //           errorMessage = errorData['message'].toString();
+  //         }
+  //       }
+  //     } catch (_) {
+  //       // If parsing fails, use original message
+  //     }
+  //     _showErrorDialog(errorMessage);
+  //   } catch (e) {
+  //     if (!mounted) return;
+      
+  //     setState(() => _isLoading = false);
+  //     print('❌ Unexpected error: $e');
+  //     _showErrorDialog('An unexpected error occurred. Please try again.');
+  //   }
+  // }
 
   // ===================== UI HELPERS =====================
   void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      title: Row(
+        children: [
+          Icon(
+            Icons.error_outline,
+            color: Colors.red[700],
+            size: 24,
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Error',
+            style: TextStyle(fontSize: 18),
           ),
         ],
       ),
-    );
-  }
+      content: Text(
+        message,
+        style: const TextStyle(fontSize: 14),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(
+            foregroundColor: AppColors.primary,
+          ),
+          child: const Text('OK'),
+        ),
+      ],
+    ),
+  );
+}
+  // void _showErrorDialog(String message) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: const Text('Error'),
+  //       content: Text(message),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           child: const Text('OK'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // ===================== MAIN UI =====================
   @override

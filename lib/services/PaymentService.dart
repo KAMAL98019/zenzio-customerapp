@@ -73,6 +73,7 @@
 //   }
 // }
 
+
 import 'package:zenzio/services/api_service.dart';
 import '../config/api_config.dart';
 
@@ -81,59 +82,104 @@ class PaymentService {
 
   // CREATE RAZORPAY ORDER
   // ============================
-  Future<Map<String, dynamic>> createRazorpayOrder({
-    required double amount,
-    required String restaurantUid,
-    required String groupUid,
-  }) async {
-    final body = {
-      "amount": amount,
-      "restaurantUid": restaurantUid,
-      "groupUid": groupUid,
-    };
+  // Future<Map<String, dynamic>> createRazorpayOrder({
+  //   required double amount,
+  //   required String restaurantUid,
+  //   required String groupUid,
+  // }) async {
+  //   final body = {
+  //     "amount": amount,
+  //     "restaurantUid": restaurantUid,
+  //     "groupUid": groupUid,
+  //   };
 
-    print("💳 Creating Razorpay Order => $body");
+  //   print("💳 Creating Razorpay Order => $body");
 
-    try {
-      final response = await _api.post(
-        ApiConfig.createRazorpayOrderEndpoint,
-        body: body,
-        requiresAuth: true,
-      );
+  //   try {
+  //     final response = await _api.post(
+  //       ApiConfig.createRazorpayOrderEndpoint,
+  //       body: body,
+  //       requiresAuth: true,
+  //     );
 
-      print("💳 Razorpay Order Response => $response");
+  //     print("💳 Razorpay Order Response => $response");
 
-      // ✅ Handle different response formats
-      Map<String, dynamic> orderData;
+  //     // ✅ Handle different response formats
+  //     Map<String, dynamic> orderData;
 
-      if (response is Map<String, dynamic>) {
-        // Check if response has 'data' wrapper
-        if (response.containsKey("data")) {
-          orderData = response["data"] as Map<String, dynamic>;
-        }
-        // Check if response has Razorpay order fields directly
-        else if (response.containsKey("id") && response.containsKey("amount")) {
-          orderData = response;
-        } else {
-          throw Exception(
-            "Invalid response format from Razorpay order creation",
-          );
-        }
+  //     if (response is Map<String, dynamic>) {
+  //       // Check if response has 'data' wrapper
+  //       if (response.containsKey("data")) {
+  //         orderData = response["data"] as Map<String, dynamic>;
+  //       }
+  //       // Check if response has Razorpay order fields directly
+  //       else if (response.containsKey("id") && response.containsKey("amount")) {
+  //         orderData = response;
+  //       } else {
+  //         throw Exception(
+  //           "Invalid response format from Razorpay order creation",
+  //         );
+  //       }
 
-        // Ensure we have the required fields
-        if (!orderData.containsKey("id")) {
-          throw Exception("Razorpay order ID not found in response");
-        }
+  //       // Ensure we have the required fields
+  //       if (!orderData.containsKey("id")) {
+  //         throw Exception("Razorpay order ID not found in response");
+  //       }
 
-        return orderData;
-      } else {
-        throw Exception("Invalid response type from Razorpay order creation");
+  //       return orderData;
+  //     } else {
+  //       throw Exception("Invalid response type from Razorpay order creation");
+  //     }
+  //   } catch (e) {
+  //     print("❌ Razorpay Order Creation Failed: $e");
+  //     rethrow;
+  //   }
+  // }
+
+ Future<Map<String, dynamic>> createRazorpayOrder({
+  required double amount,
+  required String restaurantUid,
+  required String groupUid,
+}) async {
+  final body = {
+    "pay_mode": "ONLINE",
+  };
+
+  print("💳 Creating Razorpay Order (ONLINE) => $body");
+
+  try {
+    // Build correct URL with groupUid
+    final url = "${ApiConfig.cartTransaction}/$groupUid";
+
+    final response = await _api.patch(
+      url,
+      body: body,
+      requiresAuth: true,
+    );
+
+    print("💳 Razorpay Order Response => $response");
+
+    // Extract order data
+    if (response is Map<String, dynamic>) {
+      // If backend returns { data: { ...razorpay order... } }
+      if (response.containsKey("data")) {
+        return response["data"] as Map<String, dynamic>;
       }
-    } catch (e) {
-      print("❌ Razorpay Order Creation Failed: $e");
-      rethrow;
+
+      // If backend returns razorpay fields directly
+      if (response.containsKey("id") && response.containsKey("amount")) {
+        return response;
+      }
+
+      throw Exception("Invalid Razorpay order response format");
+    } else {
+      throw Exception("Invalid Razorpay response type");
     }
+  } catch (e) {
+    print("❌ Razorpay Order Creation Failed: $e");
+    rethrow;
   }
+}
 
   // VERIFY PAYMENT
   // ============================

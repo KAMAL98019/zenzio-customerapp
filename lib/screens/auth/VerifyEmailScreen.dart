@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../../services/api_service.dart';
 import '../auth/login_screen.dart';
 
@@ -15,26 +16,99 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   bool _isResending = false;
   String _statusMessage = '';
   bool _isError = false;
+  
+  // ==================== COUNTDOWN TIMER ====================
+  bool _canResend = true;
+  int _remainingSeconds = 0;
+  Timer? _countdownTimer;
 
   @override
   void initState() {
     super.initState();
-    // Optionally check email verification status on load
     _checkVerificationStatus();
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  // ==================== START COUNTDOWN ====================
+  void _startCountdown() {
+    setState(() {
+      _remainingSeconds = 59;
+      _canResend = false;
+    });
+
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      setState(() {
+        if (_remainingSeconds > 0) {
+          _remainingSeconds--;
+        } else {
+          _canResend = true;
+          timer.cancel();
+        }
+      });
+    });
   }
 
   // ==================== CHECK VERIFICATION STATUS ====================
   Future<void> _checkVerificationStatus() async {
     try {
-      // Note: Backend doesn't have check-verification endpoint yet
       print('⚠️ Check verification endpoint not available yet');
     } catch (e) {
       print('⚠️ Could not check verification status: $e');
     }
   }
 
+  // ==================== PARSE ERROR MESSAGE ====================
+  String _parseErrorMessage(dynamic error) {
+    try {
+      String errorString = error.toString();
+      
+      // Check for TOO_MANY_ATTEMPTS in the error
+      if (errorString.contains('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+        return 'Too many verification emails sent. Please try again later.';
+      }
+
+      // Try to extract the details array
+      if (errorString.contains('details')) {
+        final RegExp detailsRegex = RegExp(r'"details":\s*\[(.*?)\]');
+        final match = detailsRegex.firstMatch(errorString);
+        
+        if (match != null) {
+          String detailsContent = match.group(1) ?? '';
+          detailsContent = detailsContent.replaceAll(r'\"', '"');
+          detailsContent = detailsContent.replaceAll(r'\\', '');
+          
+          if (detailsContent.contains('TOO_MANY_ATTEMPTS_TRY_LATER')) {
+            return 'Too many verification emails sent. Please try again later.';
+          }
+          
+          return detailsContent.isNotEmpty 
+              ? detailsContent 
+              : 'Failed to send verification email';
+        }
+      }
+
+      return 'Failed to send verification email. Please try again later.';
+    } catch (e) {
+      print('Error parsing error message: $e');
+      return 'Failed to send verification email. Please try again later.';
+    }
+  }
+
   // ==================== RESEND VERIFICATION EMAIL ====================
   Future<void> _resendVerificationEmail() async {
+    if (_isResending || !_canResend) return;
+
     setState(() {
       _isResending = true;
       _statusMessage = '';
@@ -46,67 +120,33 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         "/firebase/send-verification",
         body: {
           "email": widget.email,
-          "redirectUrl": "https://zenzio-39b9d.firebaseapp.com/__/auth/action"
+          "redirectUrl": "https://zenzio.in"
         },
         requiresAuth: true,
       );
 
       if (!mounted) return;
 
-      setState(() => _isResending = false);
+      setState(() {
+        _isResending = false;
+        _statusMessage = 'Verification email sent successfully!';
+        _isError = false;
+      });
 
-      // ✅ FIXED: Check for success in multiple ways
-      bool isSuccess = false;
-      
-      if (response['message']?.toString().toLowerCase().contains('success') == true ||
-          response['message']?.toString().contains('generated') == true) {
-        isSuccess = true;
-      } else if (response['link'] != null && response['link'].toString().isNotEmpty) {
-        isSuccess = true;
-      } else if (response['statusCode'] == 200 || response['statusCode'] == 201) {
-        isSuccess = true;
-      } else if (response['status'] == 200 || response['status'] == 201) {
-        isSuccess = true;
-      } else if (response['success'] == true) {
-        isSuccess = true;
-      }
+      // Start countdown after successful send
+      _startCountdown();
 
-      if (isSuccess) {
-        setState(() {
-          _statusMessage = 'Verification email sent successfully!';
-          _isError = false;
-        });
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Verification email sent! Please check your inbox.'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else {
-        throw Exception(response['message'] ?? 'Failed to send email');
-      }
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
         _isResending = false;
-        _statusMessage = 'Failed to send email. Please try again.';
+        _statusMessage = _parseErrorMessage(e.toString());
         _isError = true;
       });
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      // Start countdown even on error to prevent spam
+      _startCountdown();
     }
   }
 
@@ -114,14 +154,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   Future<void> _refreshVerificationStatus() async {
     if (!mounted) return;
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Please check your email and click the verification link, then proceed to login.',
-        ),
-        backgroundColor: Colors.blue,
-        duration: Duration(seconds: 4),
-      ),
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
@@ -143,13 +178,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         centerTitle: true,
       ),
       body: SafeArea(
-        child: SingleChildScrollView( // ✅ ADDED: Wrap in SingleChildScrollView
+        child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 40), // ✅ ADDED: Top spacing
+                const SizedBox(height: 40),
                 
                 // Email Icon
                 Container(
@@ -227,12 +262,14 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
                 const SizedBox(height: 40),
 
-                // Resend Email Button
+                // ✅ Resend Email Button - With 60 second countdown
                 SizedBox(
                   width: double.infinity,
                   height: 56,
                   child: OutlinedButton.icon(
-                    onPressed: _isResending ? null : _resendVerificationEmail,
+                    onPressed: (_isResending || !_canResend) 
+                        ? null 
+                        : _resendVerificationEmail,
                     icon: _isResending
                         ? const SizedBox(
                             height: 20,
@@ -242,27 +279,43 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                               valueColor: AlwaysStoppedAnimation(Color(0xFFE53935)),
                             ),
                           )
-                        : const Icon(Icons.refresh, color: Color(0xFFE53935)),
+                        : Icon(
+                            Icons.refresh, 
+                            color: (!_canResend || _isResending)
+                                ? Colors.grey 
+                                : const Color(0xFFE53935),
+                          ),
                     label: Text(
-                      _isResending ? 'Sending...' : 'Resend Verification Email',
-                      style: const TextStyle(
-                        color: Color(0xFFE53935),
+                      _isResending 
+                          ? 'Sending...' 
+                          : !_canResend 
+                              ? 'Resend in ${_remainingSeconds}s'
+                              : 'Resend Verification Email',
+                      style: TextStyle(
+                        color: (!_canResend || _isResending)
+                            ? Colors.grey 
+                            : const Color(0xFFE53935),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFFE53935)),
+                      side: BorderSide(
+                        color: (!_canResend || _isResending)
+                            ? Colors.grey 
+                            : const Color(0xFFE53935),
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      disabledForegroundColor: Colors.grey,
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 16),
 
-                // Check Verification Status Button
+                // Go to Login Button
                 SizedBox(
                   width: double.infinity,
                   height: 56,
@@ -279,7 +332,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                           )
                         : const Icon(Icons.check_circle_outline, color: Colors.white),
                     label: Text(
-                      _isLoading ? 'Checking...' : 'I\'ve Verified My Email',
+                      _isLoading ? 'Checking...' : 'Go to Login',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -297,26 +350,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 ),
 
                 const SizedBox(height: 24),
-
-                // Go to Login
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  },
-                  child: const Text(
-                    'Go to Login',
-                    style: TextStyle(
-                      color: Color(0xFF757575),
-                      fontSize: 16,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
 
                 // Instructions
                 Container(
@@ -363,7 +396,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                   ),
                 ),
                 
-                const SizedBox(height: 40), // ✅ ADDED: Bottom spacing
+                const SizedBox(height: 40),
               ],
             ),
           ),

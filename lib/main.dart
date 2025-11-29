@@ -98,7 +98,7 @@ class ZenzioApp extends StatelessWidget {
           '/signup': (context) => const SignupScreen(),
           // '/register-otp-verify': (context) => const RegisterOTPVerifyScreen(),
           '/forgot-password': (context) => const ForgotPasswordScreen(),
-          '/forgot-otp': (context) => const ForgotPasswordOTPScreen(),
+          // '/forgot-otp': (context) => const ForgotPasswordOTPScreen(),
           '/reset-password': (context) => const ResetPasswordScreen(),
            '/reset-link-sent': (context) => const ResetLinkSentScreen(),
           // Main Navigation

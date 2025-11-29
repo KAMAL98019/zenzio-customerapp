@@ -5,12 +5,18 @@ class LoginResponse {
   final String? refreshToken;
   final User? user;
   final String? message;
+  final int? statusCode;
+  final bool? emailVerified;
+  final String? verificationLink;
 
   LoginResponse({
     this.token,
     this.refreshToken,
     this.user,
     this.message,
+     this.statusCode,
+    this.emailVerified,
+    this.verificationLink,
   });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {

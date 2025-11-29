@@ -6,38 +6,73 @@ class CartTransactionService {
 
   // CREATE CART TRANSACTION
   // ============================
-  Future<Map<String, dynamic>> createCartTransaction({
-    required String cartGroupUid,
-    required String mode, // 'cod' or 'online'
-    String? description,
-  }) async {
-    final body = {
-      "cart_group_uid": cartGroupUid,
-      "mode": mode,
-      "description": description ?? "Transaction created",
-    };
+  // Future<Map<String, dynamic>> createCartTransaction({
+  //   required String cartGroupUid,
+  //   required String mode, // 'cod' or 'online'
+  //   String? description,
+  // }) async {
+  //   final body = {
+  //     "cart_group_uid": cartGroupUid,
+  //     "mode": mode,
+  //     "description": description ?? "Transaction created",
+  //   };
 
-    print("🛒 Creating Cart Transaction => $body");
+  //   print("🛒 Creating Cart Transaction => $body");
 
-    try {
-      final response = await _api.post(
-        ApiConfig.cartTransaction,
-        body: body,
-        requiresAuth: true,
-      );
+  //   try {
+  //     final response = await _api.post(
+  //       ApiConfig.cartTransaction,
+  //       body: body,
+  //       requiresAuth: true,
+  //     );
 
-      print("🛒 Cart Transaction Response => $response");
+  //     print("🛒 Cart Transaction Response => $response");
 
-      if (response["data"] == null) {
-        throw Exception("Failed to create cart transaction");
-      }
+  //     if (response["data"] == null) {
+  //       throw Exception("Failed to create cart transaction");
+  //     }
 
-      return response["data"];
-    } catch (e) {
-      print("❌ Cart Transaction Failed: $e");
-      rethrow;
+  //     return response["data"];
+  //   } catch (e) {
+  //     print("❌ Cart Transaction Failed: $e");
+  //     rethrow;
+  //   }
+  // }
+
+ Future<Map<String, dynamic>> createCartTransaction({
+  required String cartGroupUid,
+  required String mode, // 'cod' or 'online'
+}) async {
+  final body = {
+    "pay_mode": mode.toUpperCase(), // COD or ONLINE
+  };
+
+  print("🛒 Creating Cart Transaction => $body");
+
+  try {
+    // Build URL with groupId
+    final url = "${ApiConfig.cartTransaction}/$cartGroupUid";
+
+    final response = await _api.patch(
+      url,
+      body: body,
+      requiresAuth: true,
+    );
+
+    print("🛒 Cart Transaction Response => $response");
+
+    if (response["data"] == null) {
+      throw Exception("Failed to create cart transaction");
     }
+
+    return response["data"];
+  } catch (e) {
+    print("❌ Cart Transaction Failed: $e");
+    rethrow;
   }
+}
+
+
 
   // GET TRANSACTION DETAILS
   // ============================
