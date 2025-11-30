@@ -916,7 +916,9 @@ class _AddItemSheetState extends State<AddItemSheet> {
     // );
     final item = CartItem(
   restaurantUid: widget.food.restaurantUid ?? "",
-  menuUid: widget.food.id,                    // <--- real id
+    // menuUid: widget.food.menuUid ?? "", 
+        menuUid: widget.food.menuUid ?? "", 
+
   menuName: widget.food.name,                 // <--- real name
   price: widget.food.price ?? 0,              // <--- real price
   qty: _quantity,
@@ -984,7 +986,7 @@ class _AddItemSheetState extends State<AddItemSheet> {
       }
     }
   }
-}
+} 
 
 
 

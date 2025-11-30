@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:zenzio/data/models/cart_model.dart';
 import 'package:zenzio/services/cart_service.dart';
@@ -8,8 +7,7 @@ import '../../data/models/restaurant_model.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
   final String? restaurantId;
-  final Map<String, dynamic>? restaurantData; // ✅ Add restaurant data parameter
-
+  final Map<String, dynamic>? restaurantData; 
   const RestaurantDetailScreen({
     super.key,
     this.restaurantId,
@@ -836,78 +834,85 @@ class _AddItemSheetState extends State<AddItemSheet> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
+             // Replace the ElevatedButton's onPressed handler in AddItemSheet
+
+onPressed: () async {
+  final cartService = CartService();
+  
+  // ✅ FIX: Use menuUid (string) instead of id (number)
+  final item = CartItem(
+    restaurantUid: widget.food.restaurantUid ?? "",
+    menuUid: widget.food.menuUid ?? "", // Changed from widget.food.id
+    menuName: widget.food.foodName,
+    price: widget.food.price ?? 0,
+    qty: _quantity,
+  );
+
+  try {
+    await cartService.addToCart(item);
+    if (!mounted) return;
+    
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${widget.food.foodName} added to cart successfully'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    if (!mounted) return;
+    Navigator.pop(context);
+    
+    if (e.toString().contains('DIFFERENT_RESTAURANT')) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cart Conflict'),
+          content: const Text(
+            'You already have items from another restaurant. Do you want to clear your cart and add this item?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
               onPressed: () async {
-                final cartService = CartService();
-                final item = CartItem(
-                  restaurantUid: widget.food.restaurantUid ?? "",
-                  menuUid: widget.food.id,
-                  menuName: widget.food.foodName,
-                  price: widget.food.price ?? 0,
-                  qty: _quantity,
-                );
-
+                Navigator.pop(context);
                 try {
+                  await cartService.clearCart();
                   await cartService.addToCart(item);
-
                   if (!mounted) return;
-                  Navigator.pop(context);
+                  
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('${widget.food.foodName} added to cart successfully'),
                       backgroundColor: Colors.green,
                     ),
                   );
-                } catch (e) {
-                  if (!mounted) return;
-                  Navigator.pop(context);
-
-                  if (e.toString().contains('DIFFERENT_RESTAURANT')) {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Cart Conflict'),
-                        content: const Text(
-                            'You already have items from another restaurant. Do you want to clear your cart and add this item?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () async {
-                              Navigator.pop(context);
-                              try {
-                                await cartService.clearCart();
-                                await cartService.addToCart(item);
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        '${widget.food.foodName} added to cart successfully'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              } catch (err) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error: $err'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            },
-                            child: const Text('Clear & Add'),
-                          ),
-                        ],
-                      ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-                    );
-                  }
+                } catch (err) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $err'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               },
+              child: const Text('Clear & Add'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+},
               child: Text(
                 'Add to Cart - ₹${_total.toStringAsFixed(0)}',
                 style: const TextStyle(

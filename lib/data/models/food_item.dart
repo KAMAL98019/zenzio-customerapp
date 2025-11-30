@@ -45,6 +45,7 @@
 
 class FoodItem {
   final String id;
+  final String menuUid;
   final String name;
   final String? description;
   final double? price;
@@ -58,6 +59,7 @@ class FoodItem {
 
   FoodItem({
     required this.id,
+    required this.menuUid,
     required this.name,
     this.description,
     this.restaurantUid,
@@ -80,7 +82,7 @@ class FoodItem {
                      json['rest_uid'] ??
                      json['restaurantId'] ??
                      "",
-
+menuUid: json['menu_uid'] ?? '',
       description: json['description'],
       price: json['price'] != null ? (json['price'] as num).toDouble() : null,
       veg: (json['food_type']?.toString().toLowerCase() == 'veg'),

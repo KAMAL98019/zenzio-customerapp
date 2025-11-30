@@ -158,6 +158,7 @@ class Food {
   final String? image;
   final String? cuisineId;
   final String? categoryId;
+  final String menuUid;
 
   Food({
     required this.id,
@@ -173,6 +174,8 @@ class Food {
     this.image,
     this.cuisineId,
     this.categoryId,
+    required this.menuUid,
+
   });
 
  factory Food.fromJson(Map<String, dynamic> json) {
@@ -181,7 +184,7 @@ class Food {
     restId: json['restaurant_uid']?.toString() ?? '',
 
     restaurantUid: json['restaurant_uid']?.toString() ?? "",
-
+    menuUid: json['menu_uid']?.toString() ?? "", 
     foodName: json['menu_name']?.toString() ?? '',
 
     // ✅ FIXED PRICE (string / int both supported)
@@ -203,6 +206,7 @@ class Food {
 
     cuisineId: json['cuisine_type']?.toString() ?? '',
     categoryId: json['category']?.toString() ?? '',
+    
   );
 }
 
